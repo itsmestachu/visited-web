@@ -1,0 +1,22 @@
+.map-tooltip {
+  position: fixed;
+  transform: translate(12px, -130%);
+  background: var(--text);
+  color: #fff;
+  padding: 5px 9px;
+  border-radius: 6px;
+  font-size: 13px;
+  pointer-events: none;
+  white-space: nowrap;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  z-index: 20;
+}
+
+.map-tooltip-badge {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 11px;
+}

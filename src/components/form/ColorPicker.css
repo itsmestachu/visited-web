@@ -1,0 +1,18 @@
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--line);
+  padding: 0;
+}
+
+.swatch.active {
+  box-shadow: 0 0 0 2px var(--text);
+}

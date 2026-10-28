@@ -1,0 +1,26 @@
+.color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--accent);
+}
+
+.color-dot.wish {
+  background: var(--wish-fill);
+  border: 1.5px dashed var(--wish);
+}
+
+.pin-marker {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--text);
+}
+
+.pin-marker.wish {
+  background: #fff;
+  border: 2px solid var(--wish);
+}

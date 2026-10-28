@@ -1,0 +1,9 @@
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.date-row input {
+  flex: 1;
+}
