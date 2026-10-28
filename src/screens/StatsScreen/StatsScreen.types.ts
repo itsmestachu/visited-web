@@ -9,6 +9,7 @@ export type BackupSectionProps = {
 
 export type StatsScreenProps = {
   data: AppData;
+  unescoTotal: number;
   backup: BackupSectionProps;
   onOpenCountry: (code: string) => void;
 };

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { City } from "../../data/data.types";
+import type { City, UnescoSite } from "../../data/data.types";
 import { ZoomControls } from "../ZoomControls/ZoomControls";
 import { MapTooltip } from "../MapTooltip/MapTooltip";
 import { HEIGHT, spherePath, WIDTH } from "./WorldMap.projection";
@@ -14,6 +14,7 @@ import {
 import { CountryLayer } from "./CountryLayer";
 import { LabelLayer } from "./LabelLayer";
 import { PinLayer } from "./PinLayer";
+import { SiteLayer } from "./SiteLayer";
 import { CardAnchor, MapWrap, Sphere, Svg } from "./WorldMap.styles";
 import type { Hover, WorldMapProps, ZoomState } from "./WorldMap.types";
 
@@ -28,6 +29,9 @@ export function WorldMap({
   onCountryClick,
   onCityClick,
   onPlaceClick,
+  sites,
+  collectedSites,
+  onSiteClick,
   renderPinCard,
   overlay,
 }: WorldMapProps) {
@@ -59,6 +63,10 @@ export function WorldMap({
     if (!wasDragged()) onPlaceClick(id);
   };
 
+  const handleSiteClick = useLatestCallback((site: UnescoSite) => {
+    if (!wasDragged()) onSiteClick(site);
+  });
+
   return (
     <MapWrap ref={wrapRef} $mode={mode}>
       <Svg
@@ -70,6 +78,7 @@ export function WorldMap({
         <g ref={gRef}>
           <Sphere d={spherePath} />
           <CountryLayer countries={countries} onClick={handleCountryClick} onHover={setHover} />
+          {sites && <SiteLayer sites={sites} collected={collectedSites} onClick={handleSiteClick} onHover={setHover} />}
           <g onPointerMove={() => setHover(null)}>
             <LabelLayer countryLabels={countryLabels} cityItems={cityItems} onCityClick={handleCityClick} />
             <PinLayer pins={pins} activePlaceId={activePlaceId} onPinClick={handlePinClick} />

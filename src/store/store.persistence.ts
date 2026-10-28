@@ -2,13 +2,13 @@ import type { AppData } from "./store.types";
 
 const STORAGE_KEY = "visited-map:v1";
 
-export const emptyData: AppData = { version: 1, countries: {}, places: {} };
+export const emptyData: AppData = { version: 1, countries: {}, places: {}, collections: {} };
 
 export const parseData = (value: unknown): AppData | null => {
   if (!value || typeof value !== "object") return null;
   const d = value as Partial<AppData>;
   if (d.version !== 1 || !d.countries || typeof d.countries !== "object" || !d.places || typeof d.places !== "object") return null;
-  return d as AppData;
+  return { ...(d as AppData), collections: d.collections && typeof d.collections === "object" ? d.collections : {} };
 };
 
 export const loadData = (): AppData => {

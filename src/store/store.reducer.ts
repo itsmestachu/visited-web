@@ -1,4 +1,4 @@
-import type { Action, AppData, CountryEntry, Place } from "./store.types";
+import type { Action, AppData, CountryEntry, Place, Status } from "./store.types";
 import { randomColor } from "../theme/palette";
 
 const withCountry = (data: AppData, code: string, entry: CountryEntry | undefined): AppData => {
@@ -21,7 +21,12 @@ const ensureVisited = (data: AppData, code: string): AppData => {
   return withCountry(data, code, { ...current, status: "visited", color: current?.color ?? randomColor() });
 };
 
-const updatePhotos = (data: AppData, id: string, fn: (photos: string[]) => string[]) => {
+const ensureCountryFor = (data: AppData, code: string, status: Status): AppData => {
+  if (status === "visited") return ensureVisited(data, code);
+  return data.countries[code] ? data : withCountry(data, code, { status: "wish", color: randomColor() });
+};
+
+const updatePhotos =(data: AppData, id: string, fn: (photos: string[]) => string[]) => {
   const current = data.places[id];
   return current ? withPlace(data, id, { ...current, photos: fn(current.photos) }) : data;
 };
@@ -47,10 +52,7 @@ export const reducer = (data: AppData, action: Action): AppData => {
     }
     case "addPlace": {
       const next = withPlace(data, action.place.id, action.place);
-      const code = action.place.countryCode;
-      if (action.place.status === "visited") return ensureVisited(next, code);
-      if (!next.countries[code]) return withCountry(next, code, { status: "wish", color: randomColor() });
-      return next;
+      return ensureCountryFor(next, action.place.countryCode, action.place.status);
     }
     case "restorePlace":
       return withPlace(data, action.place.id, action.place);
@@ -74,5 +76,12 @@ export const reducer = (data: AppData, action: Action): AppData => {
       });
     case "replaceData":
       return action.data;
+    case "setSite": {
+      const sites = { ...data.collections[action.collection] };
+      if (action.status) sites[action.siteId] = { status: action.status };
+      else delete sites[action.siteId];
+      const next = { ...data, collections: { ...data.collections, [action.collection]: sites } };
+      return action.countryCode && action.status ? ensureCountryFor(next, action.countryCode, action.status) : next;
+    }
   }
 };

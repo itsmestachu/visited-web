@@ -175,6 +175,29 @@ export const PinGroup = styled.g<{ $status: Status; $active: boolean }>`
   }
 `;
 
+export const SiteMark = styled.g<{ $status: Status | "none" }>`
+  cursor: pointer;
+
+  .hit {
+    fill: transparent;
+  }
+
+  path {
+    fill: ${({ $status, theme }) => ($status === "visited" ? theme.colors.mustard : theme.colors.paper)};
+    stroke: ${({ $status, theme }) => ($status === "wish" ? theme.colors.wish : theme.colors.ink)};
+    stroke-width: ${({ $status }) => ($status === "none" ? "1.2px" : "1.8px")};
+    opacity: ${({ $status }) => ($status === "none" ? 0.75 : 1)};
+    transition: transform 120ms;
+  }
+
+  &:hover path {
+    fill: var(--hover-accent);
+    stroke: var(--hover-accent);
+    opacity: 1;
+    transform: scale(1.4);
+  }
+`;
+
 export const ScreenScale = styled.g`
   transform: scale(var(--inv, 1));
 `;

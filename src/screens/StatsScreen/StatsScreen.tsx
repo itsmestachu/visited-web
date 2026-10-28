@@ -9,7 +9,7 @@ import { BackupSection } from "./BackupSection";
 import { Chip, Chips, Tiles } from "./StatsScreen.styles";
 import type { StatsScreenProps } from "./StatsScreen.types";
 
-export function StatsScreen({ data, backup, onOpenCountry }: StatsScreenProps) {
+export function StatsScreen({ data, unescoTotal, backup, onOpenCountry }: StatsScreenProps) {
   const s = useTravelStats(data);
   const { colors } = useTheme();
 
@@ -28,6 +28,18 @@ export function StatsScreen({ data, backup, onOpenCountry }: StatsScreenProps) {
         {s.continents.map((c) => (
           <BarRow key={c.code} label={c.name} value={c.done} max={c.total} caption={`${c.done}/${c.total}`} />
         ))}
+      </Section>
+
+      <Section title="Kolekcje">
+        <BarRow
+          label="UNESCO"
+          value={s.unescoVisited}
+          max={unescoTotal || 1}
+          caption={[`${s.unescoVisited}/${unescoTotal || "…"}`, s.unescoWish ? `${s.unescoWish} ★` : ""].filter(Boolean).join(" · ")}
+        />
+        <Muted>
+          Lista światowego dziedzictwa: <a href="https://data.unesco.org/explore/dataset/whc001/">UNESCO World Heritage Centre</a>, CC BY-SA 4.0
+        </Muted>
       </Section>
 
       <Section title="Podróże w latach">

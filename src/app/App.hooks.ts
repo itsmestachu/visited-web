@@ -2,8 +2,9 @@ import { useCallback, useState } from "react";
 import type { AppTab } from "../components/AppHeader/AppHeader.types";
 import type { Focus } from "../components/WorldMap/WorldMap.types";
 import type { UndoToastInput } from "../components/Toast/Toast.types";
-import type { City } from "../data/data.types";
+import type { City, UnescoSite } from "../data/data.types";
 import { countryName } from "../data/countries";
+import { UNESCO } from "../data/unesco";
 import { placeFromCity } from "../store/store.factories";
 import type { AppData, Dispatch, Place, Status } from "../store/store.types";
 import { deletePhoto, savePhoto } from "../services/photoStorage/photoStorage";
@@ -130,7 +131,26 @@ export const useTravelActions = (data: AppData, dispatch: Dispatch, nav: Nav, sh
     });
   };
 
-  return { clickCountry, removeCountry, removePlace, removePhoto, selectCity };
+  const setSite = (site: UnescoSite, status: Status | null) => {
+    const previous = data.collections[UNESCO]?.[site.id]?.status ?? null;
+    const code = site.countryCodes.length === 1 ? site.countryCodes[0] : undefined;
+    const previousCountry = code ? data.countries[code] : undefined;
+    dispatch({ type: "setSite", collection: UNESCO, siteId: site.id, status, countryCode: code });
+    showToast({
+      message: `${status ? "Zaznaczono" : "Odznaczono"}: ${site.name}`,
+      onUndo: () => {
+        dispatch({ type: "setSite", collection: UNESCO, siteId: site.id, status: previous });
+        if (!code) return;
+        if (previousCountry) dispatch({ type: "restoreCountry", code, entry: previousCountry });
+        else dispatch({ type: "removeCountry", code });
+      },
+    });
+  };
+
+  const clickSite = (site: UnescoSite, mode: Status) =>
+    setSite(site, data.collections[UNESCO]?.[site.id]?.status === mode ? null : mode);
+
+  return { clickCountry, removeCountry, removePlace, removePhoto, selectCity, setSite, clickSite };
 };
 
 const omitKey = <T,>(record: Record<string, T>, key: string) => {

@@ -1,6 +1,6 @@
 import type { CityIndex } from "../../data/cities";
-import type { City } from "../../data/data.types";
-import type { CountryEntry, Place, Status } from "../../store/store.types";
+import type { City, UnescoSite } from "../../data/data.types";
+import type { CountryEntry, Place, SiteEntry, Status } from "../../store/store.types";
 
 export type Focus =
   | { kind: "country"; code: string; nonce: number }
@@ -46,6 +46,9 @@ export type WorldMapProps = {
   onCountryClick: (code: string) => void;
   onCityClick: (city: City) => void;
   onPlaceClick: (id: string) => void;
+  sites: UnescoSite[] | null;
+  collectedSites: Record<string, SiteEntry>;
+  onSiteClick: (site: UnescoSite) => void;
   renderPinCard: (pin: { place: Place; x: number; y: number }, area: Size) => React.ReactNode;
   overlay?: React.ReactNode;
 };

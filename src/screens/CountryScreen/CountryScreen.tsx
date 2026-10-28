@@ -10,12 +10,16 @@ import { List, ListRow } from "../../components/ListRow/ListRow";
 import { PinMarker } from "../../components/Marker/Marker";
 import { ButtonRow, Muted, ScreenLayout, Section } from "../../components/ScreenLayout/ScreenLayout";
 import { useCountryInfo } from "./CountryScreen.hooks";
+import { SiteList } from "./SiteList";
 import type { CountryScreenProps } from "./CountryScreen.types";
 
 export function CountryScreen({
   code,
   entry,
   places,
+  sites,
+  collectedSites,
+  onSetSite,
   dispatch,
   onBack,
   onFocus,
@@ -81,6 +85,12 @@ export function CountryScreen({
           </List>
         )}
       </Section>
+
+      {sites && sites.length > 0 && (
+        <Section title="UNESCO" count={sites.length}>
+          <SiteList sites={sites} collected={collectedSites} onSet={onSetSite} />
+        </Section>
+      )}
     </ScreenLayout>
   );
 }

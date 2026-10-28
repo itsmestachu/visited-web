@@ -21,10 +21,13 @@ export type Place = {
   createdAt: number;
 };
 
+export type SiteEntry = { status: Status };
+
 export type AppData = {
   version: 1;
   countries: Record<string, CountryEntry>;
   places: Record<string, Place>;
+  collections: Record<string, Record<string, SiteEntry>>;
 };
 
 export type Action =
@@ -40,6 +43,7 @@ export type Action =
   | { type: "addPhotos"; id: string; photoIds: string[] }
   | { type: "removePhoto"; id: string; photoId: string }
   | { type: "insertPhoto"; id: string; photoId: string; index: number }
-  | { type: "replaceData"; data: AppData };
+  | { type: "replaceData"; data: AppData }
+  | { type: "setSite"; collection: string; siteId: string; status: Status | null; countryCode?: string };
 
 export type Dispatch = (action: Action) => void;

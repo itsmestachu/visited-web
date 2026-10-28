@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { AppData } from "../../store/store.types";
 import { countries, countryName } from "../../data/countries";
 import { CONTINENT_NAMES, CONTINENT_ORDER } from "../../data/continents";
+import { UNESCO } from "../../data/unesco";
 import { yearOf } from "../../utils/dates";
 import { comparePl } from "../../utils/text";
 
@@ -46,7 +47,11 @@ export const useTravelStats = (data: AppData) =>
       .sort((a, b) => b[0] - a[0])
       .map(([year, b]) => ({ year, countries: b.countries.size, places: b.places }));
 
+    const unesco = Object.values(data.collections[UNESCO] ?? {});
+
     return {
+      unescoVisited: unesco.filter((e) => e.status === "visited").length,
+      unescoWish: unesco.filter((e) => e.status === "wish").length,
       visited: visited.length,
       total: countries.length,
       percent: Math.round((visited.length / countries.length) * 1000) / 10,

@@ -16,6 +16,19 @@ export type MapShape = {
   feature: Feature<Geometry, { name: string }>;
 };
 
+export type SiteCategory = "C" | "N" | "M";
+
+export type UnescoSite = {
+  id: string;
+  name: string;
+  countryCodes: string[];
+  lat: number;
+  lng: number;
+  year: number;
+  category: SiteCategory;
+  danger: boolean;
+};
+
 export type City = {
   id: number;
   name: string;
