@@ -1,6 +1,7 @@
 import type { AppData } from "../../store/store.types";
 import { parseData } from "../../store/store.persistence";
 import { readPhotos, replaceAllPhotos } from "../photoStorage/photoStorage";
+import { download } from "../../utils/download";
 
 const APP = "visited-map";
 const FORMAT = 1;
@@ -28,15 +29,6 @@ const toDataUrl = (blob: Blob) =>
   });
 
 const toBlob = async (dataUrl: string) => (await fetch(dataUrl)).blob();
-
-const download = (blob: Blob, filename: string) => {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-};
 
 export const exportBackup = async (data: AppData) => {
   const stored = await readPhotos(Object.values(data.places).flatMap((p) => p.photos));

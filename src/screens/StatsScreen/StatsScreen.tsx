@@ -1,4 +1,7 @@
+import { useCallback, useMemo, useState } from "react";
 import { useTheme } from "styled-components";
+import { Button } from "../../components/Button/Button";
+import { SharePoster } from "../../components/SharePoster/SharePoster";
 import { countryName } from "../../data/countries";
 import { ProgressBar } from "../../components/ProgressBar/ProgressBar";
 import { Muted, ScreenLayout, Section } from "../../components/ScreenLayout/ScreenLayout";
@@ -12,9 +15,20 @@ import type { StatsScreenProps } from "./StatsScreen.types";
 export function StatsScreen({ data, unescoTotal, backup, onOpenCountry }: StatsScreenProps) {
   const s = useTravelStats(data);
   const { colors } = useTheme();
+  const [sharing, setSharing] = useState(false);
+  const closeSharing = useCallback(() => setSharing(false), []);
+  const posterInput = useMemo(
+    () => ({ ...s, countries: data.countries, places: Object.values(data.places) }),
+    [s, data.countries, data.places],
+  );
 
   return (
     <ScreenLayout>
+      <Button variant="primary" onClick={() => setSharing(true)}>
+        Pochwal się mapą: grafika na Instagram i X
+      </Button>
+      {sharing && <SharePoster input={posterInput} onClose={closeSharing} />}
+
       <Tiles>
         <StatTile big value={s.visited} label={`krajów z ${s.total} · ${s.percent}% świata`}>
           <ProgressBar value={s.percent} color={colors.ink} />
