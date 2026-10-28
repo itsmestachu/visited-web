@@ -124,6 +124,17 @@ export const useMapFocus = (
       if (!a) return;
       const [[x0, y0], [x1, y1]] = a.bounds;
       zoomTo((x0 + x1) / 2, (y0 + y1) / 2, 0.6 / Math.max((x1 - x0) / WIDTH, (y1 - y0) / HEIGHT));
+    } else if (focus.kind === "points") {
+      const projected = focus.points.flatMap((pt) => {
+        const p = projection(pt);
+        return p ? [p] : [];
+      });
+      if (projected.length === 0) return;
+      const xs = projected.map((p) => p[0]);
+      const ys = projected.map((p) => p[1]);
+      const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+      const fit = 0.6 / Math.max((x1 - x0) / WIDTH, (y1 - y0) / HEIGHT, 1e-6);
+      zoomTo((x0 + x1) / 2, (y0 + y1) / 2, Math.min(fit, POINT_ZOOM));
     } else {
       const p = projection([focus.lng, focus.lat]);
       if (p) zoomTo(p[0], p[1], Math.max(currentK(), POINT_ZOOM));

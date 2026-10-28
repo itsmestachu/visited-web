@@ -83,5 +83,16 @@ export const reducer = (data: AppData, action: Action): AppData => {
       const next = { ...data, collections: { ...data.collections, [action.collection]: sites } };
       return action.countryCode && action.status ? ensureCountryFor(next, action.countryCode, action.status) : next;
     }
+    case "saveTrip":
+      return { ...data, trips: { ...data.trips, [action.trip.id]: action.trip } };
+    case "updateTrip": {
+      const current = data.trips[action.id];
+      return current ? { ...data, trips: { ...data.trips, [action.id]: { ...current, ...action.patch } } } : data;
+    }
+    case "removeTrip": {
+      const trips = { ...data.trips };
+      delete trips[action.id];
+      return { ...data, trips };
+    }
   }
 };

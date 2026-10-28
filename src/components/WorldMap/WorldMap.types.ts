@@ -1,10 +1,11 @@
 import type { CityIndex } from "../../data/cities";
 import type { City, UnescoSite } from "../../data/data.types";
-import type { CountryEntry, Place, SiteEntry, Status } from "../../store/store.types";
+import type { CountryEntry, Place, SiteEntry, Status, TripStop } from "../../store/store.types";
 
 export type Focus =
   | { kind: "country"; code: string; nonce: number }
-  | { kind: "point"; lng: number; lat: number; nonce: number };
+  | { kind: "point"; lng: number; lat: number; nonce: number }
+  | { kind: "points"; points: [number, number][]; nonce: number };
 
 export type ZoomState = { x: number; y: number; k: number };
 
@@ -50,6 +51,7 @@ export type WorldMapProps = {
   sites: UnescoSite[] | null;
   collectedSites: Record<string, SiteEntry>;
   onSiteClick: (site: UnescoSite) => void;
+  route: TripStop[] | null;
   renderPinCard: (pin: { place: Place; x: number; y: number }, area: Size) => React.ReactNode;
   overlay?: React.ReactNode;
 };

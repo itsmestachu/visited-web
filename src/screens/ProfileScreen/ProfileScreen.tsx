@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 import type { CityIndex } from "../../data/cities";
-import { Muted, ScreenLayout, Section } from "../../components/ScreenLayout/ScreenLayout";
+import { ErrorText, Muted, ScreenLayout, Section } from "../../components/ScreenLayout/ScreenLayout";
+import { Button } from "../../components/Button/Button";
+import { List, ListRow } from "../../components/ListRow/ListRow";
+import { PinMarker } from "../../components/Marker/Marker";
+import type { Trip } from "../../store/store.types";
+import { tripSummary } from "../../services/trips/trips";
 import { Segmented } from "../../components/Segmented/Segmented";
 import { CITY_POPULATION_STEPS, formatPopulation, type Settings } from "../../services/settings/settings";
 import { plural } from "../../utils/text";
@@ -9,7 +14,11 @@ import { SettingLabel, Slider, SoonBadge, Ticks } from "./ProfileScreen.styles";
 type Props = {
   settings: Settings;
   cities: CityIndex | null;
+  trips: Trip[];
+  linkError: string | null;
   onSettings: (patch: Partial<Settings>) => void;
+  onNewTrip: () => void;
+  onOpenTrip: (id: string) => void;
 };
 
 const LANGUAGES = [
@@ -17,7 +26,7 @@ const LANGUAGES = [
   { value: "en" as const, label: "English", disabled: true, hint: "Wkrótce" },
 ];
 
-export function ProfileScreen({ settings, cities, onSettings }: Props) {
+export function ProfileScreen({ settings, cities, trips, linkError, onSettings, onNewTrip, onOpenTrip }: Props) {
   const stepIndex = Math.max(0, CITY_POPULATION_STEPS.indexOf(settings.minCityPopulation));
   const shown = useMemo(
     () => (cities ? cities.list.filter((c) => c.population >= settings.minCityPopulation).length : null),
@@ -34,9 +43,20 @@ export function ProfileScreen({ settings, cities, onSettings }: Props) {
         </Muted>
       </Section>
 
-      <Section title="Planer">
-        <SoonBadge>Wkrótce</SoonBadge>
-        <Muted>Tu zaplanujesz wyjazdy: miejsca, trasę i plan dnia po dniu.</Muted>
+      <Section title="Planer" count={trips.length || undefined}>
+        {linkError && <ErrorText>{linkError}</ErrorText>}
+        {trips.length === 0 ? (
+          <Muted>Zaplanuj wyjazd: miejsca, trasę dzień po dniu i listę rzeczy do załatwienia. Plan wyślesz znajomym linkiem.</Muted>
+        ) : (
+          <List>
+            {trips.map((trip) => (
+              <ListRow key={trip.id} marker={<PinMarker status="wish" />} title={trip.name} subtitle={tripSummary(trip)} onClick={() => onOpenTrip(trip.id)} />
+            ))}
+          </List>
+        )}
+        <Button variant="outline" onClick={onNewTrip}>
+          + Nowy wyjazd
+        </Button>
       </Section>
 
       <Section title="Ustawienia">

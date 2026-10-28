@@ -198,6 +198,36 @@ export const SiteMark = styled.g<{ $status: Status | "none" }>`
   }
 `;
 
+export const RouteLine = styled.path`
+  fill: none;
+  stroke: ${({ theme }) => theme.colors.red};
+  stroke-width: 2.6px;
+  stroke-dasharray: 7 5;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+`;
+
+export const RouteMark = styled.g`
+  circle,
+  rect {
+    fill: ${({ theme }) => theme.colors.red};
+    stroke: ${({ theme }) => theme.colors.paper};
+    stroke-width: 2.4px;
+  }
+
+  text {
+    font-family: ${({ theme }) => theme.fonts.body};
+    font-weight: 800;
+    fill: ${({ theme }) => theme.colors.paper};
+  }
+
+  .label {
+    font-weight: 700;
+    fill: ${({ theme }) => theme.colors.ink};
+    ${halo}
+  }
+`;
+
 export const ScreenScale = styled.g`
   transform: scale(var(--inv, 1));
 `;

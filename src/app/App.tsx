@@ -22,7 +22,10 @@ import { StatsScreen } from "../screens/StatsScreen/StatsScreen";
 import { ProfileScreen } from "../screens/ProfileScreen/ProfileScreen";
 import { useSettings } from "../services/settings/settings.hooks";
 import { useBackup } from "../services/backup/backup.hooks";
-import { useNavigation, usePlaceUploads, useTravelActions } from "./App.hooks";
+import { TripScreen } from "../screens/TripScreen/TripScreen";
+import type { Trip } from "../store/store.types";
+import { orderedStops } from "../services/trips/trips";
+import { useNavigation, usePlaceUploads, useTravelActions, useTrips, useWishSuggestions } from "./App.hooks";
 import { Body, Card, Frame, MapArea, MapColumn, Panel } from "./App.styles";
 
 const NO_SITES = {};
@@ -38,6 +41,22 @@ export default function App() {
   const toast = useUndoToast();
   const uploads = usePlaceUploads(dispatch);
   const actions = useTravelActions(data, dispatch, nav, toast.show);
+  const trips = useTrips(data, dispatch, nav, toast.show);
+  const tripList = useMemo(() => Object.values(data.trips).sort((a, b) => b.createdAt - a.createdAt), [data.trips]);
+  const sharedTrip = useMemo<Trip | null>(
+    () => (trips.shared ? { ...trips.shared, id: "shared", createdAt: 0 } : null),
+    [trips.shared],
+  );
+  const activeTrip =
+    nav.tab !== "profile"
+      ? undefined
+      : nav.view.type === "trip"
+        ? data.trips[nav.view.id]
+        : nav.view.type === "sharedTrip"
+          ? (sharedTrip ?? undefined)
+          : undefined;
+  const route = useMemo(() => (activeTrip ? orderedStops(activeTrip.stops) : null), [activeTrip]);
+  const suggestions = useWishSuggestions(data, unesco);
   const backup = useBackup(data, dispatch);
   const [mode, setMode] = useState<Status>("visited");
 
@@ -56,7 +75,42 @@ export default function App() {
   };
 
   const renderPanel = () => {
-    if (nav.tab === "profile") return <ProfileScreen settings={settings} cities={cities} onSettings={updateSettings} />;
+    if (nav.tab === "profile") {
+      if (activeTrip) {
+        const isShared = nav.view.type === "sharedTrip";
+        return (
+          <TripScreen
+            key={activeTrip.id}
+            trip={activeTrip}
+            shared={isShared}
+            cities={cities}
+            unesco={unesco}
+            suggestions={suggestions}
+            shareMessage={trips.shareMessageFor(activeTrip.id)}
+            onChange={(patch) => dispatch({ type: "updateTrip", id: activeTrip.id, patch })}
+            onBack={isShared ? trips.dismissShared : nav.goHome}
+            onFocus={() => nav.focusStops(activeTrip.stops)}
+            onDelete={isShared ? undefined : () => trips.removeTrip(activeTrip.id)}
+            onShare={() => void trips.shareTrip(activeTrip)}
+            onSave={trips.saveShared}
+          />
+        );
+      }
+      return (
+        <ProfileScreen
+          settings={settings}
+          cities={cities}
+          trips={tripList}
+          linkError={trips.linkError}
+          onSettings={updateSettings}
+          onNewTrip={trips.createTrip}
+          onOpenTrip={(id) => {
+            nav.openTrip(id);
+            nav.focusStops(data.trips[id]?.stops ?? []);
+          }}
+        />
+      );
+    }
     if (nav.tab === "stats")
       return (
         <StatsScreen
@@ -144,6 +198,7 @@ export default function App() {
                 onCountryClick={(code) => actions.clickCountry(code, mode)}
                 onCityClick={(city) => actions.selectCity(city, mode, false)}
                 onPlaceClick={nav.openPlace}
+                route={route}
                 sites={showUnesco && unesco ? unesco.list : null}
                 collectedSites={collectedSites}
                 onSiteClick={(site) => actions.clickSite(site, mode)}
