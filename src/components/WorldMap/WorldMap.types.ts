@@ -39,6 +39,7 @@ export type WorldMapProps = {
   countries: Record<string, CountryEntry>;
   places: Place[];
   cities: CityIndex | null;
+  minCityPopulation: number;
   mode: Status;
   activePlaceId: string | null;
   cardPlaceId: string | null;

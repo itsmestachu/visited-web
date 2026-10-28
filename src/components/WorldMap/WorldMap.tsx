@@ -22,6 +22,7 @@ export function WorldMap({
   countries,
   places,
   cities,
+  minCityPopulation,
   mode,
   activePlaceId,
   cardPlaceId,
@@ -40,7 +41,7 @@ export function WorldMap({
   const syncRef = useRef<(zoom: ZoomState) => void>(() => undefined);
   const size = useElementSize(wrapRef);
   const { svgRef, gRef, zoomState, latest, zoomTo, zoomBy, reset, currentK, wasDragged } = useMapZoom((z) => syncRef.current(z));
-  const { viewport, pins, countryLabels, cityItems } = useLabelLayout(zoomState, size, cities, places);
+  const { viewport, pins, countryLabels, cityItems } = useLabelLayout(zoomState, size, cities, places, minCityPopulation);
   const [hover, setHover] = useState<Hover | null>(null);
   useMapFocus(focus, zoomTo, currentK);
 

@@ -18,6 +18,9 @@ export function AppHeader({ tab, onTab, visited, total, cities }: AppHeaderProps
         <Tab type="button" $active={tab === "stats"} onClick={() => onTab("stats")}>
           Statystyki
         </Tab>
+        <Tab type="button" $active={tab === "profile"} onClick={() => onTab("profile")}>
+          Profil
+        </Tab>
       </Tabs>
       <Counter>
         <CounterItem>

@@ -39,7 +39,12 @@ const pinBox = (x: number, y: number): Box => [x - 9, y - 26, x + 9, y + 2];
 const pinLabelBox = (x: number, y: number, width: number, side: Side): Box =>
   side === "right" ? [x + 9, y - 21, x + 14 + width, y - 3] : [x - 14 - width, y - 21, x - 9, y - 3];
 
-export const computeBaseLayout = (viewport: Viewport, cities: CityIndex | null, projected: ProjectedCities | null): BaseLayout => {
+export const computeBaseLayout = (
+  viewport: Viewport,
+  cities: CityIndex | null,
+  projected: ProjectedCities | null,
+  minPopulation: number,
+): BaseLayout => {
   const { width, height } = viewport;
   const { k } = viewport.zoom;
   const boxes: Box[] = [];
@@ -61,6 +66,7 @@ export const computeBaseLayout = (viewport: Viewport, cities: CityIndex | null, 
     for (; cursor < cities.list.length; cursor++) {
       const city = cities.list[cursor];
       if (city.rank < rankFloor || placedCities.length >= MAX_CITY_LABELS || checked > MAX_CITY_CANDIDATES) return;
+      if (city.population < minPopulation) continue;
       const ux = projected.xs[cursor];
       const uy = projected.ys[cursor];
       if (!(ux >= minX && ux <= maxX && uy >= minY && uy <= maxY)) continue;

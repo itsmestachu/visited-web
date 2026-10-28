@@ -19,6 +19,8 @@ import { HomeScreen } from "../screens/HomeScreen/HomeScreen";
 import { CountryScreen } from "../screens/CountryScreen/CountryScreen";
 import { PlaceScreen } from "../screens/PlaceScreen/PlaceScreen";
 import { StatsScreen } from "../screens/StatsScreen/StatsScreen";
+import { ProfileScreen } from "../screens/ProfileScreen/ProfileScreen";
+import { useSettings } from "../services/settings/settings.hooks";
 import { useBackup } from "../services/backup/backup.hooks";
 import { useNavigation, usePlaceUploads, useTravelActions } from "./App.hooks";
 import { Body, Card, Frame, MapArea, MapColumn, Panel } from "./App.styles";
@@ -28,6 +30,7 @@ const NO_SITES = {};
 export default function App() {
   const [data, dispatch] = useAppData();
   const cities = useCities();
+  const [settings, updateSettings] = useSettings();
   const unesco = useUnesco();
   const [showUnesco, setShowUnesco] = useState(false);
   const collectedSites = data.collections[UNESCO] ?? NO_SITES;
@@ -53,6 +56,7 @@ export default function App() {
   };
 
   const renderPanel = () => {
+    if (nav.tab === "profile") return <ProfileScreen settings={settings} cities={cities} onSettings={updateSettings} />;
     if (nav.tab === "stats")
       return (
         <StatsScreen
@@ -132,6 +136,7 @@ export default function App() {
                 countries={data.countries}
                 places={places}
                 cities={cities}
+                minCityPopulation={settings.minCityPopulation}
                 mode={mode}
                 activePlaceId={activePlace?.id ?? null}
                 cardPlaceId={nav.cardPlaceId}

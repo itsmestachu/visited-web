@@ -131,7 +131,13 @@ export const useMapFocus = (
   }, [focus, zoomTo, currentK]);
 };
 
-export const useLabelLayout = (zoomState: ZoomState, size: Size, cities: CityIndex | null, places: Place[]) => {
+export const useLabelLayout = (
+  zoomState: ZoomState,
+  size: Size,
+  cities: CityIndex | null,
+  places: Place[],
+  minCityPopulation: number,
+) => {
   const viewport = useMemo(() => createViewport(zoomState, size), [zoomState, size]);
 
   const projected = useMemo<ProjectedCities | null>(() => {
@@ -155,7 +161,10 @@ export const useLabelLayout = (zoomState: ZoomState, size: Size, cities: CityInd
     [places],
   );
 
-  const base = useMemo(() => computeBaseLayout(viewport, cities, projected), [viewport, cities, projected]);
+  const base = useMemo(
+    () => computeBaseLayout(viewport, cities, projected, minCityPopulation),
+    [viewport, cities, projected, minCityPopulation],
+  );
 
   const layout = useMemo(() => applyPins(viewport, base, placePoints), [viewport, base, placePoints]);
 
