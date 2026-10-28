@@ -2,7 +2,7 @@ import { resizeToJpeg } from "./photoStorage.resize";
 
 export type PhotoSize = "full" | "thumb";
 
-type StoredPhoto = {
+export type StoredPhoto = {
   id: string;
   full: Blob;
   thumb: Blob;
@@ -60,6 +60,25 @@ export const savePhoto = async (file: File): Promise<string> => {
 export const deletePhoto = async (id: string) => {
   forgetUrls(id);
   await run("readwrite", (s) => s.delete(id));
+};
+
+export const readPhotos = async (ids: string[]) => {
+  const photos = await Promise.all(ids.map((id) => run<StoredPhoto | undefined>("readonly", (s) => s.get(id))));
+  return photos.filter((p): p is StoredPhoto => p !== undefined);
+};
+
+export const replaceAllPhotos = async (photos: StoredPhoto[]) => {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    const store = tx.objectStore(STORE);
+    store.clear();
+    for (const photo of photos) store.put(photo);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  // Not revoked: mounted thumbnails may still show these URLs until they re-render.
+  urlCache.clear();
 };
 
 export const getPhotoUrl = async (id: string, size: PhotoSize) => {

@@ -39,6 +39,7 @@ export type Action =
   | { type: "removePlace"; id: string }
   | { type: "addPhotos"; id: string; photoIds: string[] }
   | { type: "removePhoto"; id: string; photoId: string }
-  | { type: "insertPhoto"; id: string; photoId: string; index: number };
+  | { type: "insertPhoto"; id: string; photoId: string; index: number }
+  | { type: "replaceData"; data: AppData };
 
 export type Dispatch = (action: Action) => void;

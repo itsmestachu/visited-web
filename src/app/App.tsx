@@ -17,6 +17,7 @@ import { HomeScreen } from "../screens/HomeScreen/HomeScreen";
 import { CountryScreen } from "../screens/CountryScreen/CountryScreen";
 import { PlaceScreen } from "../screens/PlaceScreen/PlaceScreen";
 import { StatsScreen } from "../screens/StatsScreen/StatsScreen";
+import { useBackup } from "../services/backup/backup.hooks";
 import { useNavigation, usePlaceUploads, useTravelActions } from "./App.hooks";
 import { Body, Card, Frame, MapArea, MapColumn, Panel } from "./App.styles";
 
@@ -27,6 +28,7 @@ export default function App() {
   const toast = useUndoToast();
   const uploads = usePlaceUploads(dispatch);
   const actions = useTravelActions(data, dispatch, nav, toast.show);
+  const backup = useBackup(data, dispatch);
   const [mode, setMode] = useState<Status>("visited");
 
   const places = useMemo(() => Object.values(data.places).sort((a, b) => comparePl(a.name, b.name)), [data.places]);
@@ -44,7 +46,14 @@ export default function App() {
   };
 
   const renderPanel = () => {
-    if (nav.tab === "stats") return <StatsScreen data={data} onOpenCountry={nav.openCountry} />;
+    if (nav.tab === "stats")
+      return (
+        <StatsScreen
+          data={data}
+          backup={{ busy: backup.busy, error: backup.error, onExport: backup.exportData, onImport: backup.importData }}
+          onOpenCountry={nav.openCountry}
+        />
+      );
     if (activePlace)
       return (
         <PlaceScreen

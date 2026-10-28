@@ -1,7 +1,15 @@
 import type { AppData } from "../../store/store.types";
 
+export type BackupSectionProps = {
+  busy: boolean;
+  error: string | null;
+  onExport: () => void;
+  onImport: (file: File) => void;
+};
+
 export type StatsScreenProps = {
   data: AppData;
+  backup: BackupSectionProps;
   onOpenCountry: (code: string) => void;
 };
 

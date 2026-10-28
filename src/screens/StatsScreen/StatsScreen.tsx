@@ -5,10 +5,11 @@ import { Muted, ScreenLayout, Section } from "../../components/ScreenLayout/Scre
 import { useTravelStats } from "./StatsScreen.hooks";
 import { StatTile } from "./StatTile";
 import { BarRow } from "./BarRow";
+import { BackupSection } from "./BackupSection";
 import { Chip, Chips, Tiles } from "./StatsScreen.styles";
 import type { StatsScreenProps } from "./StatsScreen.types";
 
-export function StatsScreen({ data, onOpenCountry }: StatsScreenProps) {
+export function StatsScreen({ data, backup, onOpenCountry }: StatsScreenProps) {
   const s = useTravelStats(data);
   const { colors } = useTheme();
 
@@ -58,6 +59,8 @@ export function StatsScreen({ data, onOpenCountry }: StatsScreenProps) {
           </Chips>
         )}
       </Section>
+
+      <BackupSection {...backup} />
     </ScreenLayout>
   );
 }

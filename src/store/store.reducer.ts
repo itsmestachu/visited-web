@@ -72,5 +72,7 @@ export const reducer = (data: AppData, action: Action): AppData => {
         next.splice(Math.min(action.index, next.length), 0, action.photoId);
         return next;
       });
+    case "replaceData":
+      return action.data;
   }
 };

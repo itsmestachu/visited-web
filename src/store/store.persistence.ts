@@ -4,12 +4,18 @@ const STORAGE_KEY = "visited-map:v1";
 
 export const emptyData: AppData = { version: 1, countries: {}, places: {} };
 
+export const parseData = (value: unknown): AppData | null => {
+  if (!value || typeof value !== "object") return null;
+  const d = value as Partial<AppData>;
+  if (d.version !== 1 || !d.countries || typeof d.countries !== "object" || !d.places || typeof d.places !== "object") return null;
+  return d as AppData;
+};
+
 export const loadData = (): AppData => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return emptyData;
-    const parsed = JSON.parse(raw) as AppData;
-    return parsed.version === 1 ? parsed : emptyData;
+    return parseData(JSON.parse(raw)) ?? emptyData;
   } catch {
     return emptyData;
   }
