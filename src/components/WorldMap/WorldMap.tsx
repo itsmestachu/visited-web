@@ -40,7 +40,7 @@ export function WorldMap({
   const syncRef = useRef<(zoom: ZoomState) => void>(() => undefined);
   const size = useElementSize(wrapRef);
   const { svgRef, gRef, zoomState, latest, zoomTo, zoomBy, reset, currentK, wasDragged } = useMapZoom((z) => syncRef.current(z));
-  const { pins, countryLabels, cityItems } = useLabelLayout(zoomState, size, cities, places);
+  const { viewport, pins, countryLabels, cityItems } = useLabelLayout(zoomState, size, cities, places);
   const [hover, setHover] = useState<Hover | null>(null);
   useMapFocus(focus, zoomTo, currentK);
 
@@ -55,13 +55,13 @@ export function WorldMap({
     if (!wasDragged()) onCountryClick(code);
   });
 
-  const handleCityClick = (city: City) => {
+  const handleCityClick = useLatestCallback((city: City) => {
     if (!wasDragged()) onCityClick(city);
-  };
+  });
 
-  const handlePinClick = (id: string) => {
+  const handlePinClick = useLatestCallback((id: string) => {
     if (!wasDragged()) onPlaceClick(id);
-  };
+  });
 
   const handleSiteClick = useLatestCallback((site: UnescoSite) => {
     if (!wasDragged()) onSiteClick(site);
@@ -78,7 +78,9 @@ export function WorldMap({
         <g ref={gRef}>
           <Sphere d={spherePath} />
           <CountryLayer countries={countries} onClick={handleCountryClick} onHover={setHover} />
-          {sites && <SiteLayer sites={sites} collected={collectedSites} onClick={handleSiteClick} onHover={setHover} />}
+          {sites && (
+            <SiteLayer sites={sites} collected={collectedSites} viewport={viewport} onClick={handleSiteClick} onHover={setHover} />
+          )}
           <g onPointerMove={() => setHover(null)}>
             <LabelLayer countryLabels={countryLabels} cityItems={cityItems} onCityClick={handleCityClick} />
             <PinLayer pins={pins} activePlaceId={activePlaceId} onPinClick={handlePinClick} />

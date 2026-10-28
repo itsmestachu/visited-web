@@ -101,7 +101,14 @@ export const createViewport = (zoom: ZoomState, size: Size): Viewport => {
   };
 };
 
-export const toScreen = (v: Viewport, x: number, y: number): [number, number] => [
+// Visible area in map units, expanded by `margin` screen pixels: [minX, minY, maxX, maxY].
+export const visibleUnits = (v: Viewport, margin: number): [number, number, number, number] => {
+  const ux = (sx: number) => ((sx - v.offsetX) / v.scale - v.zoom.x) / v.zoom.k;
+  const uy = (sy: number) => ((sy - v.offsetY) / v.scale - v.zoom.y) / v.zoom.k;
+  return [ux(-margin), uy(-margin), ux(v.width + margin), uy(v.height + margin)];
+};
+
+export const toScreen =(v: Viewport, x: number, y: number): [number, number] => [
   v.offsetX + v.scale * (v.zoom.x + v.zoom.k * x),
   v.offsetY + v.scale * (v.zoom.y + v.zoom.k * y),
 ];

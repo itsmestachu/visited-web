@@ -1,6 +1,6 @@
 import type { CityIndex } from "../../data/cities";
 import type { Place } from "../../store/store.types";
-import { countryAnchors, toScreen } from "./WorldMap.projection";
+import { countryAnchors, toScreen, visibleUnits } from "./WorldMap.projection";
 import type { CityItem, CountryLabelItem, LabelLayout, PinItem, ProjectedCities, Side, Viewport } from "./WorldMap.types";
 
 export const CITY_FONT = 12;
@@ -52,6 +52,7 @@ export const computeBaseLayout = (viewport: Viewport, cities: CityIndex | null, 
 
   const placedCities: Placed<CityItem>[] = [];
   const minRank = minRankFor(k);
+  const [minX, minY, maxX, maxY] = visibleUnits(viewport, EDGE);
   let cursor = 0;
   let checked = 0;
 
@@ -61,10 +62,9 @@ export const computeBaseLayout = (viewport: Viewport, cities: CityIndex | null, 
       const city = cities.list[cursor];
       if (city.rank < rankFloor || placedCities.length >= MAX_CITY_LABELS || checked > MAX_CITY_CANDIDATES) return;
       const ux = projected.xs[cursor];
-      if (Number.isNaN(ux)) continue;
       const uy = projected.ys[cursor];
+      if (!(ux >= minX && ux <= maxX && uy >= minY && uy <= maxY)) continue;
       const [sx, sy] = toScreen(viewport, ux, uy);
-      if (!onScreen(sx, sy)) continue;
       checked++;
       const w = cityTextWidth(city.namePl);
       for (const side of SIDES) {

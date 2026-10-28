@@ -10,6 +10,8 @@ import type { Focus, ProjectedCities, Size, ZoomState } from "./WorldMap.types";
 
 const IDENTITY: ZoomState = { x: 0, y: 0, k: 1 };
 const POINT_ZOOM = 12;
+// Labels ride along with the map transform during a gesture, so re-running the label layout every frame is wasted work.
+const LAYOUT_INTERVAL = 100;
 
 export const useElementSize = (ref: RefObject<HTMLElement | null>) => {
   const [size, setSize] = useState<Size>({ width: 0, height: 0 });
@@ -59,17 +61,22 @@ export const useMapZoom = (onFrame: (zoom: ZoomState) => void) => {
         latestRef.current = { x: event.transform.x, y: event.transform.y, k: event.transform.k };
         onFrameRef.current(latestRef.current);
         if (!frameRef.current) {
-          frameRef.current = requestAnimationFrame(() => {
+          frameRef.current = window.setTimeout(() => {
             frameRef.current = 0;
             setZoomState(latestRef.current);
-          });
+          }, LAYOUT_INTERVAL);
         }
+      })
+      .on("end", () => {
+        clearTimeout(frameRef.current);
+        frameRef.current = 0;
+        setZoomState(latestRef.current);
       });
     behaviorRef.current = behavior;
     select(svg).call(behavior).on("dblclick.zoom", null);
     return () => {
       select(svg).on(".zoom", null);
-      cancelAnimationFrame(frameRef.current);
+      clearTimeout(frameRef.current);
     };
   }, []);
 
