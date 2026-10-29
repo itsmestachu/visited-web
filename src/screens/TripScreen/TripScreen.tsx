@@ -10,7 +10,16 @@ import { NoteField } from "../../components/NoteField/NoteField";
 import { ScreenHeader } from "../../components/ScreenHeader/ScreenHeader";
 import { Segmented } from "../../components/Segmented/Segmented";
 import { Muted, ScreenLayout, Section } from "../../components/ScreenLayout/ScreenLayout";
-import { dayLabel, orderedStops, stopFromCity, stopFromSite, tripSummary, withDates, withDays } from "../../services/trips/trips";
+import {
+  dayLabel,
+  orderedStops,
+  stopFromCity,
+  stopFromLandmark,
+  stopFromSite,
+  tripSummary,
+  withDates,
+  withDays,
+} from "../../services/trips/trips";
 import { StopSearch } from "./StopSearch";
 import {
   Banner,
@@ -45,6 +54,7 @@ export function TripScreen({
   shared,
   cities,
   unesco,
+  landmarks,
   suggestions,
   shareMessage,
   onChange,
@@ -194,8 +204,17 @@ export function TripScreen({
             <StopSearch
               cities={cities}
               unesco={unesco}
-              placeholder="Miasto albo miejsce UNESCO…"
-              onPick={(r) => addStop(r.kind === "city" ? stopFromCity(r.city, addDay) : stopFromSite(r.site, addDay))}
+              landmarks={landmarks}
+              placeholder="Miasto, atrakcja albo miejsce UNESCO…"
+              onPick={(r) =>
+                addStop(
+                  r.kind === "city"
+                    ? stopFromCity(r.city, addDay)
+                    : r.kind === "landmark"
+                      ? stopFromLandmark(r.landmark, addDay)
+                      : stopFromSite(r.site, addDay),
+                )
+              }
             />
             {freshSuggestions.length > 0 && (
               <Chips>

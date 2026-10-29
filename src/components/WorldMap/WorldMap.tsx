@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { City, UnescoSite } from "../../data/data.types";
+import type { City, Landmark, UnescoSite } from "../../data/data.types";
 import { ZoomControls } from "../ZoomControls/ZoomControls";
 import { MapTooltip } from "../MapTooltip/MapTooltip";
 import { HEIGHT, spherePath, WIDTH } from "./WorldMap.projection";
@@ -16,6 +16,7 @@ import { LabelLayer } from "./LabelLayer";
 import { PinLayer } from "./PinLayer";
 import { SiteLayer } from "./SiteLayer";
 import { RouteLayer } from "./RouteLayer";
+import { LandmarkLayer } from "./LandmarkLayer";
 import { CardAnchor, MapWrap, Sphere, Svg } from "./WorldMap.styles";
 import type { Hover, WorldMapProps, ZoomState } from "./WorldMap.types";
 
@@ -34,6 +35,9 @@ export function WorldMap({
   sites,
   collectedSites,
   onSiteClick,
+  landmarks,
+  collectedLandmarks,
+  onLandmarkClick,
   route,
   renderPinCard,
   overlay,
@@ -43,13 +47,14 @@ export function WorldMap({
   const syncRef = useRef<(zoom: ZoomState) => void>(() => undefined);
   const size = useElementSize(wrapRef);
   const { svgRef, gRef, zoomState, latest, zoomTo, zoomBy, reset, currentK, wasDragged } = useMapZoom((z) => syncRef.current(z));
-  const { viewport, pins, countryLabels, cityItems, routeItems } = useLabelLayout(
+  const { viewport, pins, countryLabels, cityItems, landmarkItems, routeItems } = useLabelLayout(
     zoomState,
     size,
     cities,
     places,
     minCityPopulation,
     route,
+    landmarks,
   );
   const [hover, setHover] = useState<Hover | null>(null);
   useMapFocus(focus, zoomTo, currentK);
@@ -77,6 +82,10 @@ export function WorldMap({
     if (!wasDragged()) onSiteClick(site);
   });
 
+  const handleLandmarkClick = useLatestCallback((landmark: Landmark) => {
+    if (!wasDragged()) onLandmarkClick(landmark);
+  });
+
   return (
     <MapWrap ref={wrapRef} $mode={mode}>
       <Svg
@@ -91,6 +100,7 @@ export function WorldMap({
           {sites && (
             <SiteLayer sites={sites} collected={collectedSites} viewport={viewport} onClick={handleSiteClick} onHover={setHover} />
           )}
+          <LandmarkLayer items={landmarkItems} collected={collectedLandmarks} onClick={handleLandmarkClick} onHover={setHover} />
           <g onPointerMove={() => setHover(null)}>
             <LabelLayer countryLabels={countryLabels} cityItems={cityItems} onCityClick={handleCityClick} />
             <PinLayer pins={pins} activePlaceId={activePlaceId} onPinClick={handlePinClick} />

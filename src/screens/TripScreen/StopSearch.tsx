@@ -1,17 +1,19 @@
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { searchCities, type CityIndex } from "../../data/cities";
 import { countryName } from "../../data/countries";
-import type { City, UnescoSite } from "../../data/data.types";
+import type { City, Landmark, UnescoSite } from "../../data/data.types";
+import { LANDMARK_LABEL } from "../../data/landmarks";
 import type { UnescoIndex } from "../../data/unesco";
 import { Icon } from "../../components/Icon/Icon";
 import { Empty, Input, InputWrap, Kind, Main, ResultItem, Results, SearchIcon, Sub, Wrapper } from "../../components/SearchBar/SearchBar.styles";
 import { normalize } from "../../utils/text";
 
-type Result = { kind: "city"; city: City } | { kind: "site"; site: UnescoSite };
+type Result = { kind: "city"; city: City } | { kind: "landmark"; landmark: Landmark } | { kind: "site"; site: UnescoSite };
 
 type Props = {
   cities: CityIndex | null;
   unesco: UnescoIndex | null;
+  landmarks: Landmark[] | null;
   placeholder: string;
   onPick: (result: Result) => void;
 };
@@ -19,25 +21,34 @@ type Props = {
 export type StopResult = Result;
 
 const SITE_LIMIT = 4;
+const LANDMARK_LIMIT = 4;
 
-export function StopSearch({ cities, unesco, placeholder, onPick }: Props) {
+export function StopSearch({ cities, unesco, landmarks, placeholder, onPick }: Props) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
 
   const siteKeys = useMemo(() => unesco?.list.map((s) => normalize(s.name)) ?? [], [unesco]);
+  const landmarkKeys = useMemo(() => landmarks?.map((l) => normalize(l.name)) ?? [], [landmarks]);
 
   const results = useMemo<Result[]>(() => {
     const q = normalize(query.trim());
     if (q.length < 2) return [];
     const found: Result[] = cities ? searchCities(cities, query, 6).map((city) => ({ kind: "city", city })) : [];
+    if (landmarks && q.length >= 3) {
+      const before = found.length;
+      for (let i = 0; i < landmarks.length && found.length < before + LANDMARK_LIMIT; i++) {
+        if (landmarkKeys[i].includes(q)) found.push({ kind: "landmark", landmark: landmarks[i] });
+      }
+    }
     if (unesco && q.length >= 3) {
-      for (let i = 0; i < unesco.list.length && found.length < 6 + SITE_LIMIT; i++) {
+      const before = found.length;
+      for (let i = 0; i < unesco.list.length && found.length < before + SITE_LIMIT; i++) {
         if (siteKeys[i].includes(q)) found.push({ kind: "site", site: unesco.list[i] });
       }
     }
     return found;
-  }, [query, cities, unesco, siteKeys]);
+  }, [query, cities, unesco, siteKeys, landmarks, landmarkKeys]);
 
   const pick = (r: Result) => {
     onPick(r);
@@ -89,7 +100,7 @@ export function StopSearch({ cities, unesco, placeholder, onPick }: Props) {
           {results.length === 0 && <Empty>{cities ? "Brak wyników" : "Wczytywanie miast…"}</Empty>}
           {results.map((r, i) => (
             <ResultItem
-              key={r.kind === "city" ? `c-${r.city.id}` : `s-${r.site.id}`}
+              key={r.kind === "city" ? `c-${r.city.id}` : r.kind === "landmark" ? `l-${r.landmark.id}` : `s-${r.site.id}`}
               role="option"
               aria-selected={i === active}
               $active={i === active}
@@ -99,13 +110,15 @@ export function StopSearch({ cities, unesco, placeholder, onPick }: Props) {
               }}
               onMouseEnter={() => setActive(i)}
             >
-              <Kind aria-hidden="true">{r.kind === "city" ? "●" : "◆"}</Kind>
+              <Kind aria-hidden="true">{r.kind === "city" ? "●" : r.kind === "landmark" ? "★" : "◆"}</Kind>
               <Main>
-                <span>{r.kind === "city" ? r.city.namePl : r.site.name}</span>
+                <span>{r.kind === "city" ? r.city.namePl : r.kind === "landmark" ? r.landmark.name : r.site.name}</span>
                 <Sub>
                   {r.kind === "city"
                     ? countryName(r.city.countryCode)
-                    : `UNESCO · ${r.site.countryCodes.map(countryName).join(", ")}`}
+                    : r.kind === "landmark"
+                      ? `${LANDMARK_LABEL[r.landmark.category]} · ${countryName(r.landmark.countryCode)}`
+                      : `UNESCO · ${r.site.countryCodes.map(countryName).join(", ")}`}
                 </Sub>
               </Main>
             </ResultItem>

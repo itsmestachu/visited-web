@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import type { Status } from "../store/store.types";
 import { useAppData } from "../store/store.hooks";
-import { useCities, useUnesco } from "../data/data.hooks";
+import { useCities, useLandmarks, useUnesco } from "../data/data.hooks";
+import { LANDMARKS } from "../data/landmarks";
 import { UNESCO } from "../data/unesco";
 import { countries, countryName } from "../data/countries";
 import { comparePl } from "../utils/text";
@@ -10,7 +11,7 @@ import { AppHeader } from "../components/AppHeader/AppHeader";
 import { WorldMap } from "../components/WorldMap/WorldMap";
 import { MapLegend } from "../components/MapLegend/MapLegend";
 import { ModeSwitch } from "../components/ModeSwitch/ModeSwitch";
-import { LayerToggle } from "../components/LayerToggle/LayerToggle";
+import { LayerToggle, LayerToggles } from "../components/LayerToggle/LayerToggle";
 import { PlaceCard } from "../components/PlaceCard/PlaceCard";
 import { PhotoViewer } from "../components/PhotoViewer/PhotoViewer";
 import { Toast } from "../components/Toast/Toast";
@@ -37,6 +38,9 @@ export default function App() {
   const [settings, updateSettings] = useSettings();
   const unesco = useUnesco();
   const [showUnesco, setShowUnesco] = useState(false);
+  const landmarks = useLandmarks();
+  const [showLandmarks, setShowLandmarks] = useState(true);
+  const collectedLandmarks = data.collections[LANDMARKS] ?? NO_SITES;
   const collectedSites = data.collections[UNESCO] ?? NO_SITES;
   const nav = useNavigation();
   const toast = useUndoToast();
@@ -89,6 +93,7 @@ export default function App() {
             shared={isShared}
             cities={cities}
             unesco={unesco}
+            landmarks={landmarks}
             suggestions={suggestions}
             shareMessage={trips.shareMessageFor(activeTrip.id)}
             onChange={(patch) => dispatch({ type: "updateTrip", id: activeTrip.id, patch })}
@@ -123,6 +128,7 @@ export default function App() {
         <StatsScreen
           data={data}
           unescoTotal={unesco?.list.length ?? 0}
+          landmarksTotal={landmarks?.length ?? 0}
           backup={{ busy: backup.busy, error: backup.error, onExport: backup.exportData, onImport: backup.importData }}
           onOpenCountry={nav.openCountry}
         />
@@ -226,6 +232,9 @@ export default function App() {
                     sites={showUnesco && unesco ? unesco.list : null}
                     collectedSites={collectedSites}
                     onSiteClick={(site) => actions.clickSite(site, mode)}
+                    landmarks={showLandmarks ? landmarks : null}
+                    collectedLandmarks={collectedLandmarks}
+                    onLandmarkClick={(landmark) => actions.clickLandmark(landmark, mode)}
                     renderPinCard={(pin, area) => (
                       <PlaceCard
                         place={pin.place}
@@ -243,12 +252,21 @@ export default function App() {
                     overlay={
                       <>
                         <ModeSwitch mode={mode} onChange={setMode} />
-                        <LayerToggle
-                          label="UNESCO"
-                          count={unesco ? `${Object.values(collectedSites).filter((e) => e.status === "visited").length}/${unesco.list.length}` : undefined}
-                          on={showUnesco}
-                          onChange={setShowUnesco}
-                        />
+                        <LayerToggles>
+                          <LayerToggle
+                            label="Atrakcje"
+                            icon={<span aria-hidden="true">★</span>}
+                            count={landmarks ? `${Object.values(collectedLandmarks).filter((e) => e.status === "visited").length}/${landmarks.length}` : undefined}
+                            on={showLandmarks}
+                            onChange={setShowLandmarks}
+                          />
+                          <LayerToggle
+                            label="UNESCO"
+                            count={unesco ? `${Object.values(collectedSites).filter((e) => e.status === "visited").length}/${unesco.list.length}` : undefined}
+                            on={showUnesco}
+                            onChange={setShowUnesco}
+                          />
+                        </LayerToggles>
                       </>
                     }
                   />

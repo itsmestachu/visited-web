@@ -12,7 +12,7 @@ import { BackupSection } from "./BackupSection";
 import { Chip, Chips, Tiles } from "./StatsScreen.styles";
 import type { StatsScreenProps } from "./StatsScreen.types";
 
-export function StatsScreen({ data, unescoTotal, backup, onOpenCountry }: StatsScreenProps) {
+export function StatsScreen({ data, unescoTotal, landmarksTotal, backup, onOpenCountry }: StatsScreenProps) {
   const s = useTravelStats(data);
   const { colors } = useTheme();
   const [sharing, setSharing] = useState(false);
@@ -46,13 +46,20 @@ export function StatsScreen({ data, unescoTotal, backup, onOpenCountry }: StatsS
 
       <Section title="Kolekcje">
         <BarRow
+          label="Słynne miejsca"
+          value={s.landmarksVisited}
+          max={landmarksTotal || 1}
+          caption={[`${s.landmarksVisited}/${landmarksTotal || "…"}`, s.landmarksWish ? `${s.landmarksWish} ★` : ""].filter(Boolean).join(" · ")}
+        />
+        <BarRow
           label="UNESCO"
           value={s.unescoVisited}
           max={unescoTotal || 1}
           caption={[`${s.unescoVisited}/${unescoTotal || "…"}`, s.unescoWish ? `${s.unescoWish} ★` : ""].filter(Boolean).join(" · ")}
         />
         <Muted>
-          Lista światowego dziedzictwa: <a href="https://data.unesco.org/explore/dataset/whc001/">UNESCO World Heritage Centre</a>, CC BY-SA 4.0
+          Lista światowego dziedzictwa: <a href="https://data.unesco.org/explore/dataset/whc001/">UNESCO World Heritage Centre</a>, CC BY-SA 4.0.
+          Słynne miejsca: <a href="https://www.wikidata.org/">Wikidata</a> (CC0), ikony <a href="https://github.com/mapbox/maki">Maki</a> (CC0).
         </Muted>
       </Section>
 

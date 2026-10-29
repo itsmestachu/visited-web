@@ -3,10 +3,11 @@ import { select } from "d3-selection";
 import { zoom, zoomIdentity, zoomTransform, type ZoomBehavior } from "d3-zoom";
 import "d3-transition";
 import type { CityIndex } from "../../data/cities";
+import type { Landmark } from "../../data/data.types";
 import type { Place, TripStop } from "../../store/store.types";
 import { anchorFor, createViewport, HEIGHT, MAX_ZOOM, projection, toScreen, WIDTH } from "./WorldMap.projection";
 import { applyPins, computeBaseLayout, layoutRoute } from "./WorldMap.layout";
-import type { Focus, ProjectedCities, Size, ZoomState } from "./WorldMap.types";
+import type { Focus, ProjectedCities, ProjectedLandmark, Size, ZoomState } from "./WorldMap.types";
 
 const IDENTITY: ZoomState = { x: 0, y: 0, k: 1 };
 const POINT_ZOOM = 12;
@@ -149,6 +150,7 @@ export const useLabelLayout = (
   places: Place[],
   minCityPopulation: number,
   route: TripStop[] | null,
+  landmarks: Landmark[] | null = null,
 ) => {
   const viewport = useMemo(() => createViewport(zoomState, size), [zoomState, size]);
 
@@ -173,9 +175,18 @@ export const useLabelLayout = (
     [places],
   );
 
+  const projectedLandmarks = useMemo<ProjectedLandmark[] | null>(
+    () =>
+      landmarks?.flatMap((landmark) => {
+        const p = projection([landmark.lng, landmark.lat]);
+        return p ? [{ landmark, ux: p[0], uy: p[1] }] : [];
+      }) ?? null,
+    [landmarks],
+  );
+
   const base = useMemo(
-    () => computeBaseLayout(viewport, cities, projected, minCityPopulation),
-    [viewport, cities, projected, minCityPopulation],
+    () => computeBaseLayout(viewport, cities, projected, minCityPopulation, projectedLandmarks),
+    [viewport, cities, projected, minCityPopulation, projectedLandmarks],
   );
 
   const routeLayout = useMemo(() => (route ? layoutRoute(viewport, route) : null), [viewport, route]);

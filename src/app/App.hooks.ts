@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AppTab } from "../components/AppHeader/AppHeader.types";
 import type { Focus } from "../components/WorldMap/WorldMap.types";
 import type { UndoToastInput } from "../components/Toast/Toast.types";
-import type { City, UnescoSite } from "../data/data.types";
+import type { City, Landmark, UnescoSite } from "../data/data.types";
+import { LANDMARKS } from "../data/landmarks";
 import { countryName } from "../data/countries";
 import { UNESCO } from "../data/unesco";
 import { placeFromCity } from "../store/store.factories";
@@ -154,15 +155,16 @@ export const useTravelActions = (data: AppData, dispatch: Dispatch, nav: Nav, sh
     });
   };
 
-  const setSite = (site: UnescoSite, status: Status | null) => {
-    const previous = data.collections[UNESCO]?.[site.id]?.status ?? null;
-    const code = site.countryCodes.length === 1 ? site.countryCodes[0] : undefined;
+  // Marks an item of a collection (UNESCO, famous landmarks…); a single-country item also marks its country.
+  const setCollectionItem = (collection: string, item: { id: string; name: string; countryCodes: string[] }, status: Status | null) => {
+    const previous = data.collections[collection]?.[item.id]?.status ?? null;
+    const code = item.countryCodes.length === 1 ? item.countryCodes[0] : undefined;
     const previousCountry = code ? data.countries[code] : undefined;
-    dispatch({ type: "setSite", collection: UNESCO, siteId: site.id, status, countryCode: code });
+    dispatch({ type: "setSite", collection, siteId: item.id, status, countryCode: code });
     showToast({
-      message: `${status ? "Zaznaczono" : "Odznaczono"}: ${site.name}`,
+      message: `${status ? "Zaznaczono" : "Odznaczono"}: ${item.name}`,
       onUndo: () => {
-        dispatch({ type: "setSite", collection: UNESCO, siteId: site.id, status: previous });
+        dispatch({ type: "setSite", collection, siteId: item.id, status: previous });
         if (!code) return;
         if (previousCountry) dispatch({ type: "restoreCountry", code, entry: previousCountry });
         else dispatch({ type: "removeCountry", code });
@@ -170,10 +172,19 @@ export const useTravelActions = (data: AppData, dispatch: Dispatch, nav: Nav, sh
     });
   };
 
+  const setSite = (site: UnescoSite, status: Status | null) => setCollectionItem(UNESCO, site, status);
+
   const clickSite = (site: UnescoSite, mode: Status) =>
     setSite(site, data.collections[UNESCO]?.[site.id]?.status === mode ? null : mode);
 
-  return { clickCountry, removeCountry, removePlace, removePhoto, selectCity, setSite, clickSite };
+  const clickLandmark = (landmark: Landmark, mode: Status) =>
+    setCollectionItem(
+      LANDMARKS,
+      { id: landmark.id, name: landmark.name, countryCodes: [landmark.countryCode] },
+      data.collections[LANDMARKS]?.[landmark.id]?.status === mode ? null : mode,
+    );
+
+  return { clickCountry, removeCountry, removePlace, removePhoto, selectCity, setSite, clickSite, clickLandmark };
 };
 
 const omitKey = <T,>(record: Record<string, T>, key: string) => {

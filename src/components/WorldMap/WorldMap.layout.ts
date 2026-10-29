@@ -1,12 +1,15 @@
 import type { CityIndex } from "../../data/cities";
+import type { Landmark } from "../../data/data.types";
 import type { Place, TripStop } from "../../store/store.types";
 import { countryAnchors, projection, toScreen, visibleUnits } from "./WorldMap.projection";
 import type {
   CityItem,
   CountryLabelItem,
   LabelLayout,
+  LandmarkItem,
   PinItem,
   ProjectedCities,
+  ProjectedLandmark,
   RouteItem,
   RouteLabelSide,
   Side,
@@ -28,9 +31,32 @@ type PlacePoint = { place: Place; x: number; y: number };
 
 type Placed<T> = { item: T; box: Box };
 
+type PlacedLandmark = { item: LandmarkItem; box: Box; labelBox: Box | null };
+
 export type BaseLayout = {
   countries: Placed<CountryLabelItem>[];
   cities: Placed<CityItem>[];
+  landmarks: PlacedLandmark[];
+};
+
+export const LANDMARK_RADIUS = 11;
+export const LANDMARK_FONT = 12;
+const MAX_LANDMARKS = 40;
+const LANDMARK_LABEL_MAX = 24;
+
+// Only the most famous sights show on a world view; each zoom step lets less famous ones in.
+const minLinksFor = (k: number) => 160 / Math.pow(k, 0.55);
+
+const landmarkLabel = (name: string) =>
+  name.length > LANDMARK_LABEL_MAX ? `${name.slice(0, LANDMARK_LABEL_MAX - 1).trimEnd()}…` : name;
+
+const LABEL_SIDES: RouteLabelSide[] = ["right", "left", "top", "bottom"];
+
+const landmarkLabelBox = (sx: number, sy: number, width: number, side: RouteLabelSide): Box => {
+  if (side === "right") return [sx + LANDMARK_RADIUS + 2, sy - 9, sx + LANDMARK_RADIUS + 6 + width, sy + 9];
+  if (side === "left") return [sx - LANDMARK_RADIUS - 6 - width, sy - 9, sx - LANDMARK_RADIUS - 2, sy + 9];
+  const y = side === "top" ? sy - LANDMARK_RADIUS - 10 : sy + LANDMARK_RADIUS + 10;
+  return [sx - width / 2 - 2, y - 9, sx + width / 2 + 2, y + 9];
 };
 
 const intersects = (a: Box, b: Box) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
@@ -54,6 +80,7 @@ export const computeBaseLayout = (
   cities: CityIndex | null,
   projected: ProjectedCities | null,
   minPopulation: number,
+  landmarks: ProjectedLandmark[] | null = null,
 ): BaseLayout => {
   const { width, height } = viewport;
   const { k } = viewport.zoom;
@@ -93,6 +120,32 @@ export const computeBaseLayout = (
     }
   };
 
+  // Famous sights go first: they are what people look for on a city's map. A label takes a side that leaves the
+  // icons of the sights still to come uncovered or, failing that, covers the least famous of them.
+  const placedLandmarks: PlacedLandmark[] = [];
+  const minLinks = minLinksFor(k);
+  const candidates: { landmark: Landmark; ux: number; uy: number; sx: number; sy: number; box: Box }[] = [];
+  for (const { landmark, ux, uy } of landmarks ?? []) {
+    if (landmark.links < minLinks || candidates.length >= MAX_LANDMARKS * 2) break;
+    if (!(ux >= minX && ux <= maxX && uy >= minY && uy <= maxY)) continue;
+    const [sx, sy] = toScreen(viewport, ux, uy);
+    candidates.push({ landmark, ux, uy, sx, sy, box: [sx - LANDMARK_RADIUS, sy - LANDMARK_RADIUS, sx + LANDMARK_RADIUS, sy + LANDMARK_RADIUS] });
+  }
+  candidates.forEach(({ landmark, ux, uy, sx, sy, box }, i) => {
+    if (placedLandmarks.length >= MAX_LANDMARKS || !tryAdd(box)) return;
+    const label = landmarkLabel(landmark.name);
+    const width = label.length * LANDMARK_FONT * 0.56;
+    const free = (b: Box) => !boxes.some((o) => intersects(o, b));
+    // Cost of a side: the fame of the most famous sight still to come that it would cover (0 if none).
+    const cost = (b: Box) => Math.max(0, ...candidates.slice(i + 1).filter((c) => intersects(c.box, b)).map((c) => c.landmark.links));
+    const sides = LABEL_SIDES.map((side) => ({ side, box: landmarkLabelBox(sx, sy, width, side) }))
+      .filter((s) => free(s.box))
+      .map((s) => ({ ...s, cost: cost(s.box) }));
+    const pick = sides.reduce<(typeof sides)[number] | undefined>((best, s) => (!best || s.cost < best.cost ? s : best), undefined);
+    if (pick) boxes.push(pick.box);
+    placedLandmarks.push({ item: { landmark, ux, uy, label, side: pick?.side ?? null }, box, labelBox: pick?.box ?? null });
+  });
+
   placeCities(minRank * MAJOR_FACTOR);
 
   const placedCountries: Placed<CountryLabelItem>[] = [];
@@ -108,7 +161,7 @@ export const computeBaseLayout = (
 
   placeCities(minRank);
 
-  return { countries: placedCountries, cities: placedCities };
+  return { countries: placedCountries, cities: placedCities, landmarks: placedLandmarks };
 };
 
 export const ROUTE_RADIUS = 13;
@@ -218,5 +271,8 @@ export const applyPins = (viewport: Viewport, base: BaseLayout, placePoints: Pla
     pins,
     countryLabels: base.countries.filter((c) => free(c.box)).map((c) => c.item),
     cityItems: base.cities.filter((c) => !placedCityIds.has(c.item.city.id) && free(c.box)).map((c) => c.item),
+    landmarkItems: base.landmarks
+      .filter((l) => free(l.box))
+      .map((l) => (l.labelBox && !free(l.labelBox) ? { ...l.item, side: null } : l.item)),
   };
 };

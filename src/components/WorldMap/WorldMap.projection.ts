@@ -5,7 +5,7 @@ import type { Size, Viewport, ZoomState } from "./WorldMap.types";
 
 export const WIDTH = 960;
 export const HEIGHT = 500;
-export const MAX_ZOOM = 80;
+export const MAX_ZOOM = 1200;
 
 export const projection = geoNaturalEarth1().fitExtent(
   [

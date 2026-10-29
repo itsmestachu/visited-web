@@ -1,4 +1,5 @@
-import type { City, UnescoSite } from "../../data/data.types";
+import type { City, Landmark, UnescoSite } from "../../data/data.types";
+import { LANDMARK_LABEL } from "../../data/landmarks";
 import type { Place, Trip, TripStop } from "../../store/store.types";
 import { formatDate } from "../../utils/dates";
 import { plural } from "../../utils/text";
@@ -34,6 +35,16 @@ export const stopFromPlace = (place: Place, day: number): TripStop => ({
   lng: place.lng,
   day,
   cityId: place.cityId,
+});
+
+export const stopFromLandmark = (landmark: Landmark, day: number): TripStop => ({
+  id: crypto.randomUUID(),
+  name: landmark.name,
+  countryCode: landmark.countryCode,
+  lat: landmark.lat,
+  lng: landmark.lng,
+  day,
+  kind: LANDMARK_LABEL[landmark.category],
 });
 
 export const stopFromSite = (site: UnescoSite, day: number): TripStop => ({

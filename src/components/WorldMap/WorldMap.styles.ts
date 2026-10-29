@@ -198,6 +198,39 @@ export const SiteMark = styled.g<{ $status: Status | "none" }>`
   }
 `;
 
+export const LandmarkMark = styled.g<{ $status: Status | "none" }>`
+  cursor: pointer;
+
+  circle {
+    fill: ${({ $status, theme }) => ($status === "visited" ? theme.colors.red : theme.colors.paper)};
+    stroke: ${({ $status, theme }) => ($status === "wish" ? theme.colors.wish : theme.colors.ink)};
+    stroke-width: ${({ $status }) => ($status === "wish" ? "2px" : "1.4px")};
+    stroke-dasharray: ${({ $status }) => ($status === "wish" ? "3 2" : "none")};
+    transition: transform 120ms;
+  }
+
+  .icon {
+    fill: ${({ $status, theme }) => ($status === "visited" ? theme.colors.paper : $status === "wish" ? theme.colors.wish : theme.colors.ink)};
+    pointer-events: none;
+  }
+
+  text {
+    font-family: ${({ theme }) => theme.fonts.body};
+    font-weight: 700;
+    fill: ${({ theme }) => theme.colors.ink};
+    ${halo}
+  }
+
+  &:hover circle {
+    transform: scale(1.18);
+    stroke: var(--hover-accent);
+  }
+
+  &:hover text {
+    fill: var(--hover-accent);
+  }
+`;
+
 export const RouteLine = styled.path`
   fill: none;
   stroke: ${({ theme }) => theme.colors.red};

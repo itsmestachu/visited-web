@@ -1,11 +1,24 @@
 import styled from "styled-components";
 import { mobile } from "../../theme/theme";
 
-export const ToggleButton = styled.button<{ $on: boolean }>`
+export const Stack = styled.div`
   position: absolute;
   left: 14px;
   bottom: 14px;
   z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+
+  ${mobile} {
+    left: 8px;
+    bottom: 8px;
+    gap: 6px;
+  }
+`;
+
+export const ToggleButton = styled.button<{ $on: boolean }>`
   display: flex;
   align-items: center;
   gap: 7px;
@@ -28,8 +41,6 @@ export const ToggleButton = styled.button<{ $on: boolean }>`
   }
 
   ${mobile} {
-    left: 8px;
-    bottom: 8px;
     height: 32px;
     font-size: 13px;
   }

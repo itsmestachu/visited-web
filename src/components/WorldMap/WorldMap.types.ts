@@ -1,5 +1,5 @@
 import type { CityIndex } from "../../data/cities";
-import type { City, UnescoSite } from "../../data/data.types";
+import type { City, Landmark, UnescoSite } from "../../data/data.types";
 import type { CountryEntry, Place, SiteEntry, Status, TripStop } from "../../store/store.types";
 
 export type Focus =
@@ -44,9 +44,13 @@ export type CountryLabelItem = UnitPoint & { code: string; text: string };
 
 export type CityItem = UnitPoint & { city: City; side: Side };
 
-export type LabelLayout = { pins: PinItem[]; countryLabels: CountryLabelItem[]; cityItems: CityItem[] };
+export type LandmarkItem = UnitPoint & { landmark: Landmark; label: string; side: RouteLabelSide | null };
+
+export type LabelLayout = { pins: PinItem[]; countryLabels: CountryLabelItem[]; cityItems: CityItem[]; landmarkItems: LandmarkItem[] };
 
 export type ProjectedCities = { xs: Float32Array; ys: Float32Array };
+
+export type ProjectedLandmark = { landmark: Landmark; ux: number; uy: number };
 
 export type WorldMapProps = {
   countries: Record<string, CountryEntry>;
@@ -63,6 +67,9 @@ export type WorldMapProps = {
   sites: UnescoSite[] | null;
   collectedSites: Record<string, SiteEntry>;
   onSiteClick: (site: UnescoSite) => void;
+  landmarks: Landmark[] | null;
+  collectedLandmarks: Record<string, SiteEntry>;
+  onLandmarkClick: (landmark: Landmark) => void;
   route: TripStop[] | null;
   renderPinCard: (pin: { place: Place; x: number; y: number }, area: Size) => React.ReactNode;
   overlay?: React.ReactNode;
