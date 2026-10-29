@@ -3,13 +3,15 @@ import { select } from "d3-selection";
 import { zoom, zoomIdentity, zoomTransform, type ZoomBehavior } from "d3-zoom";
 import "d3-transition";
 import type { CityIndex } from "../../data/cities";
-import type { Landmark } from "../../data/data.types";
+import type { Landmark, UnescoSite } from "../../data/data.types";
 import type { Place, TripStop } from "../../store/store.types";
 import { anchorFor, createViewport, HEIGHT, MAX_ZOOM, projection, toScreen, WIDTH } from "./WorldMap.projection";
 import { applyPins, computeBaseLayout, layoutRoute } from "./WorldMap.layout";
-import type { Focus, ProjectedCities, ProjectedLandmark, Size, ZoomState } from "./WorldMap.types";
+import type { Focus, ProjectedCities, ProjectedLandmark, ProjectedSite, Size, ZoomState } from "./WorldMap.types";
 
 const IDENTITY: ZoomState = { x: 0, y: 0, k: 1 };
+const NO_LANDMARKS: Landmark[] = [];
+const NO_SITES: UnescoSite[] = [];
 const POINT_ZOOM = 12;
 // Labels ride along with the map transform during a gesture, so re-running the label layout every frame is wasted work.
 const LAYOUT_INTERVAL = 100;
@@ -151,6 +153,8 @@ export const useLabelLayout = (
   minCityPopulation: number,
   route: TripStop[] | null,
   landmarks: Landmark[] | null = null,
+  markedLandmarks: Landmark[] = NO_LANDMARKS,
+  markedSites: UnescoSite[] = NO_SITES,
 ) => {
   const viewport = useMemo(() => createViewport(zoomState, size), [zoomState, size]);
 
@@ -184,6 +188,20 @@ export const useLabelLayout = (
     [landmarks],
   );
 
+  const marked = useMemo(
+    () => ({
+      landmarks: markedLandmarks.flatMap((landmark): ProjectedLandmark[] => {
+        const p = projection([landmark.lng, landmark.lat]);
+        return p ? [{ landmark, ux: p[0], uy: p[1] }] : [];
+      }),
+      sites: markedSites.flatMap((site): ProjectedSite[] => {
+        const p = projection([site.lng, site.lat]);
+        return p ? [{ site, ux: p[0], uy: p[1] }] : [];
+      }),
+    }),
+    [markedLandmarks, markedSites],
+  );
+
   const base = useMemo(
     () => computeBaseLayout(viewport, cities, projected, minCityPopulation, projectedLandmarks),
     [viewport, cities, projected, minCityPopulation, projectedLandmarks],
@@ -191,7 +209,10 @@ export const useLabelLayout = (
 
   const routeLayout = useMemo(() => (route ? layoutRoute(viewport, route) : null), [viewport, route]);
 
-  const layout = useMemo(() => applyPins(viewport, base, placePoints, routeLayout?.boxes), [viewport, base, placePoints, routeLayout]);
+  const layout = useMemo(
+    () => applyPins(viewport, base, placePoints, routeLayout?.boxes, marked),
+    [viewport, base, placePoints, routeLayout, marked],
+  );
 
   return { viewport, routeItems: routeLayout?.items ?? null, ...layout };
 };

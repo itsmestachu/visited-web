@@ -231,6 +231,40 @@ export const LandmarkMark = styled.g<{ $status: Status | "none" }>`
   }
 `;
 
+export const ClusterTile = styled.g`
+  cursor: pointer;
+
+  rect {
+    stroke: ${({ theme }) => theme.colors.ink};
+    stroke-width: 1.6px;
+  }
+
+  .back {
+    fill: ${({ theme }) => theme.colors.paper};
+  }
+
+  .front {
+    fill: ${({ theme }) => theme.colors.mustard};
+  }
+
+  .count {
+    font-family: ${({ theme }) => theme.fonts.body};
+    font-weight: 800;
+    fill: ${({ theme }) => theme.colors.ink};
+  }
+
+  .label {
+    font-family: ${({ theme }) => theme.fonts.body};
+    font-weight: 700;
+    fill: ${({ theme }) => theme.colors.ink};
+    ${halo}
+  }
+
+  &:hover .front {
+    fill: var(--hover-accent);
+  }
+`;
+
 export const RouteLine = styled.path`
   fill: none;
   stroke: ${({ theme }) => theme.colors.red};

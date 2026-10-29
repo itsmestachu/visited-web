@@ -27,7 +27,7 @@ import { TripScreen } from "../screens/TripScreen/TripScreen";
 import type { Trip } from "../store/store.types";
 import { orderedStops } from "../services/trips/trips";
 import { MemoryBoard } from "../components/MemoryBoard/MemoryBoard";
-import { useAvatar, useNavigation, usePlaceUploads, useTravelActions, useTrips, useWishSuggestions } from "./App.hooks";
+import { useAvatar, useCollectedRows, useNavigation, usePlaceUploads, useTravelActions, useTrips, useWishSuggestions } from "./App.hooks";
 import { Body, Card, Frame, MapArea, MapColumn, Panel } from "./App.styles";
 
 const NO_SITES = {};
@@ -62,6 +62,7 @@ export default function App() {
           : undefined;
   const route = useMemo(() => (activeTrip ? orderedStops(activeTrip.stops) : null), [activeTrip]);
   const suggestions = useWishSuggestions(data, unesco);
+  const collected = useCollectedRows(data, landmarks, unesco);
   // The profile tab shows the memory wall in place of the map, unless a trip is open and needs its route.
   const showBoard = nav.tab === "profile" && !activeTrip;
   const changeAvatar = useAvatar(data.profile.avatarId, dispatch);
@@ -187,6 +188,11 @@ export default function App() {
         onOpenPlace={openPlaceAndFocus}
         onRemoveCountry={actions.removeCountry}
         onRemovePlace={actions.removePlace}
+        landmarkRows={collected.landmarkRows}
+        siteRows={collected.siteRows}
+        onOpenCollected={(row) => nav.focusPoint(row.lng, row.lat)}
+        onRemoveLandmark={(row) => actions.setCollectionItem(LANDMARKS, row, null)}
+        onRemoveSite={(row) => actions.setCollectionItem(UNESCO, row, null)}
       />
     );
   };
@@ -229,10 +235,12 @@ export default function App() {
                     onCityClick={(city) => actions.selectCity(city, mode, false)}
                     onPlaceClick={nav.openPlace}
                     route={route}
-                    sites={showUnesco && unesco ? unesco.list : null}
+                    sites={unesco?.list ?? null}
+                    showSites={showUnesco}
                     collectedSites={collectedSites}
                     onSiteClick={(site) => actions.clickSite(site, mode)}
-                    landmarks={showLandmarks ? landmarks : null}
+                    landmarks={landmarks}
+                    showLandmarks={showLandmarks}
                     collectedLandmarks={collectedLandmarks}
                     onLandmarkClick={(landmark) => actions.clickLandmark(landmark, mode)}
                     renderPinCard={(pin, area) => (

@@ -11,6 +11,7 @@ import type { AppData, Dispatch, Place, Status, Trip, TripStop } from "../store/
 import { newTrip, stopFromPlace, stopFromSite } from "../services/trips/trips";
 import type { UnescoIndex } from "../data/unesco";
 import type { WishSuggestion } from "../screens/TripScreen/TripScreen.types";
+import type { CollectedRow } from "../screens/HomeScreen/HomeScreen.types";
 import { decodeTrip, encodeTrip, SHARE_PREFIX, type SharedTrip } from "../services/trips/trips.share";
 import { deletePhoto, savePhoto } from "../services/photoStorage/photoStorage";
 import type { UploadProgress } from "../services/photoStorage/photoStorage.hooks";
@@ -184,7 +185,7 @@ export const useTravelActions = (data: AppData, dispatch: Dispatch, nav: Nav, sh
       data.collections[LANDMARKS]?.[landmark.id]?.status === mode ? null : mode,
     );
 
-  return { clickCountry, removeCountry, removePlace, removePhoto, selectCity, setSite, clickSite, clickLandmark };
+  return { clickCountry, removeCountry, removePlace, removePhoto, selectCity, setSite, clickSite, clickLandmark, setCollectionItem };
 };
 
 const omitKey = <T,>(record: Record<string, T>, key: string) => {
@@ -328,6 +329,24 @@ export const useWishSuggestions = (data: AppData, unesco: UnescoIndex | null) =>
     });
     return [...places, ...sites];
   }, [data.places, data.collections, unesco]);
+
+// Marked landmarks and UNESCO sites as list rows (only those whose data has loaded).
+export const useCollectedRows = (data: AppData, landmarks: Landmark[] | null, unesco: UnescoIndex | null) =>
+  useMemo(() => {
+    const landmarkById = new Map(landmarks?.map((l) => [l.id, l]));
+    const siteById = new Map(unesco?.list.map((s) => [s.id, s]));
+    const landmarkRows: CollectedRow[] = Object.entries(data.collections[LANDMARKS] ?? {}).flatMap(([id, entry]) => {
+      const l = landmarkById.get(id);
+      return l
+        ? [{ key: `l-${id}`, id, name: l.name, countryCodes: [l.countryCode], lat: l.lat, lng: l.lng, status: entry.status, category: l.category }]
+        : [];
+    });
+    const siteRows: CollectedRow[] = Object.entries(data.collections[UNESCO] ?? {}).flatMap(([id, entry]) => {
+      const s = siteById.get(id);
+      return s ? [{ key: `s-${id}`, id, name: s.name, countryCodes: s.countryCodes, lat: s.lat, lng: s.lng, status: entry.status }] : [];
+    });
+    return { landmarkRows, siteRows };
+  }, [data.collections, landmarks, unesco]);
 
 export const useAvatar = (currentId: string | undefined, dispatch: Dispatch) =>
   useCallback(

@@ -1,15 +1,17 @@
 import type { CityIndex } from "../../data/cities";
-import type { Landmark } from "../../data/data.types";
+import type { Landmark, UnescoSite } from "../../data/data.types";
 import type { Place, TripStop } from "../../store/store.types";
-import { countryAnchors, projection, toScreen, visibleUnits } from "./WorldMap.projection";
+import { countryAnchors, MAX_ZOOM, projection, toScreen, visibleUnits } from "./WorldMap.projection";
 import type {
   CityItem,
+  ClusterItem,
   CountryLabelItem,
   LabelLayout,
   LandmarkItem,
   PinItem,
   ProjectedCities,
   ProjectedLandmark,
+  ProjectedSite,
   RouteItem,
   RouteLabelSide,
   Side,
@@ -240,22 +242,117 @@ export const layoutRoute = (viewport: Viewport, stops: TripStop[]): { items: Rou
   return { items, boxes };
 };
 
-export const applyPins = (viewport: Viewport, base: BaseLayout, placePoints: PlacePoint[], routeBoxes: Box[] = []): LabelLayout => {
+const MARK_CLUSTER_PX = 22;
+const TILE_HEIGHT = 24;
+
+const tileWidth = (text: string) => Math.max(TILE_HEIGHT, text.length * 8 + 14);
+
+type MarkedPoint =
+  | { kind: "place"; place: Place; ux: number; uy: number; sx: number; sy: number }
+  | { kind: "landmark"; landmark: Landmark; ux: number; uy: number; sx: number; sy: number }
+  | { kind: "site"; site: UnescoSite; ux: number; uy: number; sx: number; sy: number };
+
+const markedName = (m: MarkedPoint) => (m.kind === "place" ? m.place.name : m.kind === "landmark" ? m.landmark.name : m.site.name);
+
+const markedLngLat = (m: MarkedPoint): [number, number] =>
+  m.kind === "place" ? [m.place.lng, m.place.lat] : m.kind === "landmark" ? [m.landmark.lng, m.landmark.lat] : [m.site.lng, m.site.lat];
+
+export type MarkedInput = { landmarks: ProjectedLandmark[]; sites: ProjectedSite[] };
+
+// Everything the user marked (cities, sights, UNESCO sites) always stays on the map: markers that would overlap merge
+// into a numbered tile that splits again on zoom. Optional labels and unmarked sights give way to them.
+export const applyPins = (
+  viewport: Viewport,
+  base: BaseLayout,
+  placePoints: PlacePoint[],
+  routeBoxes: Box[] = [],
+  marked: MarkedInput = { landmarks: [], sites: [] },
+): LabelLayout => {
   const placedCityIds = new Set(placePoints.flatMap((p) => (p.place.cityId !== undefined ? [p.place.cityId] : [])));
   // The open trip's route goes first: pins and labels in its way give way.
   const pinBoxes: Box[] = [...routeBoxes];
-  const pins: PinItem[] = [];
   const underRoute = (sx: number, sy: number) => routeBoxes.some((b) => sx > b[0] && sx < b[2] && sy > b[1] && sy < b[3]);
+  const visible = (sx: number, sy: number) =>
+    sx >= -EDGE && sy >= -EDGE && sx <= viewport.width + EDGE && sy <= viewport.height + EDGE && !underRoute(sx, sy);
 
+  const points: MarkedPoint[] = [];
   for (const { place, x, y } of placePoints) {
     if (Number.isNaN(x)) continue;
     const [sx, sy] = toScreen(viewport, x, y);
-    if (sx < -EDGE || sy < -EDGE || sx > viewport.width + EDGE || sy > viewport.height + EDGE) continue;
-    if (underRoute(sx, sy)) continue;
-    pinBoxes.push(pinBox(sx, sy));
-    pins.push({ place, ux: x, uy: y, x: sx, y: sy, side: null });
+    if (visible(sx, sy)) points.push({ kind: "place", place, ux: x, uy: y, sx, sy });
+  }
+  for (const { landmark, ux, uy } of marked.landmarks) {
+    const [sx, sy] = toScreen(viewport, ux, uy);
+    if (visible(sx, sy)) points.push({ kind: "landmark", landmark, ux, uy, sx, sy });
+  }
+  for (const { site, ux, uy } of marked.sites) {
+    const [sx, sy] = toScreen(viewport, ux, uy);
+    if (visible(sx, sy)) points.push({ kind: "site", site, ux, uy, sx, sy });
   }
 
+  // Greedy clustering in priority order: cities, then sights by fame, then UNESCO sites.
+  const groups: MarkedPoint[][] = [];
+  for (const p of points) {
+    const near = groups.find((g) => Math.hypot(g[0].sx - p.sx, g[0].sy - p.sy) < MARK_CLUSTER_PX);
+    if (near) near.push(p);
+    else groups.push([p]);
+  }
+
+  // Places that still overlap at maximum zoom can never split by zooming, so they fan out in a ring instead.
+  const atMaxZoom = viewport.zoom.k >= MAX_ZOOM * 0.95;
+  const unitsPerPx = 1 / (viewport.scale * viewport.zoom.k);
+  const spread = (group: MarkedPoint[]): MarkedPoint[][] => {
+    const radius = 16 + group.length * 4;
+    return group.map((m, i) => {
+      const angle = (i / group.length) * Math.PI * 2 - Math.PI / 2;
+      const dx = Math.cos(angle) * radius;
+      const dy = Math.sin(angle) * radius;
+      return [{ ...m, sx: group[0].sx + dx, sy: group[0].sy + dy, ux: group[0].ux + dx * unitsPerPx, uy: group[0].uy + dy * unitsPerPx }];
+    });
+  };
+  const laidOut = atMaxZoom ? groups.flatMap((g) => (g.length > 1 ? spread(g) : [g])) : groups;
+
+  const pins: PinItem[] = [];
+  const markedLandmarks: { item: LandmarkItem; sx: number; sy: number }[] = [];
+  const clusters: ClusterItem[] = [];
+  const clusteredSites = new Set<string>();
+  const sitePositions = new Map<string, [number, number]>();
+
+  for (const group of laidOut) {
+    const [first] = group;
+    if (group.length === 1 && first.kind === "place") {
+      pinBoxes.push(pinBox(first.sx, first.sy));
+      pins.push({ place: first.place, ux: first.ux, uy: first.uy, x: first.sx, y: first.sy, side: null });
+    } else if (group.length === 1 && first.kind === "landmark") {
+      pinBoxes.push([first.sx - LANDMARK_RADIUS, first.sy - LANDMARK_RADIUS, first.sx + LANDMARK_RADIUS, first.sy + LANDMARK_RADIUS]);
+      const item: LandmarkItem = { landmark: first.landmark, ux: first.ux, uy: first.uy, label: landmarkLabel(first.landmark.name), side: null };
+      markedLandmarks.push({ item, sx: first.sx, sy: first.sy });
+    } else if (group.length === 1 && first.kind === "site") {
+      pinBoxes.push([first.sx - 6, first.sy - 6, first.sx + 6, first.sy + 6]);
+      sitePositions.set(first.site.id, [first.ux, first.uy]);
+    } else {
+      const text = String(group.length);
+      const width = tileWidth(text);
+      pinBoxes.push([first.sx - width / 2, first.sy - TILE_HEIGHT / 2, first.sx + width / 2, first.sy + TILE_HEIGHT / 2]);
+      for (const m of group) if (m.kind === "site") clusteredSites.add(m.site.id);
+      clusters.push({
+        key: group.map((m) => (m.kind === "place" ? m.place.id : m.kind === "landmark" ? m.landmark.id : m.site.id)).join("|"),
+        ux: first.ux,
+        uy: first.uy,
+        text,
+        width,
+        label: null,
+        side: "right",
+        title: group.map(markedName).join("\n"),
+        points: group.map(markedLngLat),
+        sx: first.sx,
+        sy: first.sy,
+        names: group.map(markedName),
+      });
+    }
+  }
+
+  // Labels after every marker is down, so a label never hides a marked place.
   for (const pin of pins) {
     const w = cityTextWidth(pin.place.name);
     const side = SIDES.find((s) => !pinBoxes.some((b) => intersects(b, pinLabelBox(pin.x, pin.y, w, s)))) ?? null;
@@ -264,15 +361,41 @@ export const applyPins = (viewport: Viewport, base: BaseLayout, placePoints: Pla
       pinBoxes.push(pinLabelBox(pin.x, pin.y, w, side));
     }
   }
+  for (const { item, sx, sy } of markedLandmarks) {
+    const width = item.label.length * LANDMARK_FONT * 0.56;
+    const pick = LABEL_SIDES.map((side) => ({ side, box: landmarkLabelBox(sx, sy, width, side) })).find(
+      (s) => !pinBoxes.some((b) => intersects(b, s.box)),
+    );
+    if (pick) {
+      item.side = pick.side;
+      pinBoxes.push(pick.box);
+    }
+  }
+  for (const c of clusters) {
+    const label = `${shorten(c.names[0])} +${c.names.length - 1}`;
+    const width = routeTextWidth(label);
+    for (const side of ["right", "left"] as const) {
+      const box = routeLabelBox(c.sx, c.sy, c.width / 2, width, side);
+      if (pinBoxes.some((b) => intersects(b, box))) continue;
+      pinBoxes.push(box);
+      c.label = label;
+      c.side = side;
+      break;
+    }
+  }
 
   const free = (box: Box) => !pinBoxes.some((b) => intersects(b, box));
 
   return {
     pins,
+    clusters,
+    clusteredSites,
+    sitePositions,
     countryLabels: base.countries.filter((c) => free(c.box)).map((c) => c.item),
     cityItems: base.cities.filter((c) => !placedCityIds.has(c.item.city.id) && free(c.box)).map((c) => c.item),
-    landmarkItems: base.landmarks
-      .filter((l) => free(l.box))
-      .map((l) => (l.labelBox && !free(l.labelBox) ? { ...l.item, side: null } : l.item)),
+    landmarkItems: [
+      ...markedLandmarks.map((m) => m.item),
+      ...base.landmarks.filter((l) => free(l.box)).map((l) => (l.labelBox && !free(l.labelBox) ? { ...l.item, side: null } : l.item)),
+    ],
   };
 };

@@ -10,6 +10,9 @@ type Props = {
   sites: UnescoSite[];
   collected: Record<string, SiteEntry>;
   viewport: Viewport;
+  // Sites drawn inside a cluster tile instead.
+  hidden: Set<string>;
+  positions: Map<string, [number, number]>;
   onClick: (site: UnescoSite) => void;
   onHover: (hover: Hover | null) => void;
 };
@@ -54,7 +57,7 @@ const SiteMarker = memo(function SiteMarker({ site, x, y, status, onClick, onHov
   );
 });
 
-export function SiteLayer({ sites, collected, viewport, onClick, onHover }: Props) {
+export function SiteLayer({ sites, collected, viewport, hidden, positions, onClick, onHover }: Props) {
   const points = useMemo(
     () =>
       sites.flatMap((site) => {
@@ -68,11 +71,12 @@ export function SiteLayer({ sites, collected, viewport, onClick, onHover }: Prop
 
   return (
     <g>
-      {points.map(({ site, x, y }) =>
-        x >= minX && x <= maxX && y >= minY && y <= maxY ? (
-          <SiteMarker key={site.id} site={site} x={x} y={y} status={collected[site.id]?.status} onClick={onClick} onHover={onHover} />
-        ) : null,
-      )}
+      {points.map(({ site, x, y }) => {
+        const [px, py] = positions.get(site.id) ?? [x, y];
+        return px >= minX && px <= maxX && py >= minY && py <= maxY && !hidden.has(site.id) ? (
+          <SiteMarker key={site.id} site={site} x={px} y={py} status={collected[site.id]?.status} onClick={onClick} onHover={onHover} />
+        ) : null;
+      })}
     </g>
   );
 }

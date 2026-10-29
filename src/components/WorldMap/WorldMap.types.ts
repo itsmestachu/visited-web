@@ -46,11 +46,36 @@ export type CityItem = UnitPoint & { city: City; side: Side };
 
 export type LandmarkItem = UnitPoint & { landmark: Landmark; label: string; side: RouteLabelSide | null };
 
-export type LabelLayout = { pins: PinItem[]; countryLabels: CountryLabelItem[]; cityItems: CityItem[]; landmarkItems: LandmarkItem[] };
+export type ClusterItem = UnitPoint & {
+  key: string;
+  text: string;
+  width: number;
+  label: string | null;
+  side: "right" | "left";
+  title: string;
+  names: string[];
+  // [lng, lat] of every member, to zoom in on the group.
+  points: [number, number][];
+  sx: number;
+  sy: number;
+};
+
+export type LabelLayout = {
+  pins: PinItem[];
+  clusters: ClusterItem[];
+  clusteredSites: Set<string>;
+  // Map position of each marked site drawn on its own (moved when a group fans out at maximum zoom).
+  sitePositions: Map<string, [number, number]>;
+  countryLabels: CountryLabelItem[];
+  cityItems: CityItem[];
+  landmarkItems: LandmarkItem[];
+};
 
 export type ProjectedCities = { xs: Float32Array; ys: Float32Array };
 
 export type ProjectedLandmark = { landmark: Landmark; ux: number; uy: number };
+
+export type ProjectedSite = { site: UnescoSite; ux: number; uy: number };
 
 export type WorldMapProps = {
   countries: Record<string, CountryEntry>;
@@ -64,10 +89,13 @@ export type WorldMapProps = {
   onCountryClick: (code: string) => void;
   onCityClick: (city: City) => void;
   onPlaceClick: (id: string) => void;
+  // All sites/landmarks; marked ones always show, the rest only while their layer is switched on.
   sites: UnescoSite[] | null;
+  showSites: boolean;
   collectedSites: Record<string, SiteEntry>;
   onSiteClick: (site: UnescoSite) => void;
   landmarks: Landmark[] | null;
+  showLandmarks: boolean;
   collectedLandmarks: Record<string, SiteEntry>;
   onLandmarkClick: (landmark: Landmark) => void;
   route: TripStop[] | null;
