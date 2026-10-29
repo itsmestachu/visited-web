@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { City, UnescoSite } from "../../data/data.types";
 import { ZoomControls } from "../ZoomControls/ZoomControls";
 import { MapTooltip } from "../MapTooltip/MapTooltip";
@@ -43,12 +43,14 @@ export function WorldMap({
   const syncRef = useRef<(zoom: ZoomState) => void>(() => undefined);
   const size = useElementSize(wrapRef);
   const { svgRef, gRef, zoomState, latest, zoomTo, zoomBy, reset, currentK, wasDragged } = useMapZoom((z) => syncRef.current(z));
-  const { viewport, pins, countryLabels, cityItems } = useLabelLayout(zoomState, size, cities, places, minCityPopulation);
-  // Cities on the route already carry a numbered marker with their name.
-  const visibleCityItems = useMemo(() => {
-    const onRoute = new Set(route?.flatMap((s) => (s.cityId ? [s.cityId] : [])));
-    return onRoute.size ? cityItems.filter((c) => !onRoute.has(c.city.id)) : cityItems;
-  }, [cityItems, route]);
+  const { viewport, pins, countryLabels, cityItems, routeItems } = useLabelLayout(
+    zoomState,
+    size,
+    cities,
+    places,
+    minCityPopulation,
+    route,
+  );
   const [hover, setHover] = useState<Hover | null>(null);
   useMapFocus(focus, zoomTo, currentK);
 
@@ -90,10 +92,10 @@ export function WorldMap({
             <SiteLayer sites={sites} collected={collectedSites} viewport={viewport} onClick={handleSiteClick} onHover={setHover} />
           )}
           <g onPointerMove={() => setHover(null)}>
-            <LabelLayer countryLabels={countryLabels} cityItems={visibleCityItems} onCityClick={handleCityClick} />
+            <LabelLayer countryLabels={countryLabels} cityItems={cityItems} onCityClick={handleCityClick} />
             <PinLayer pins={pins} activePlaceId={activePlaceId} onPinClick={handlePinClick} />
           </g>
-          {route && <RouteLayer stops={route} />}
+          {route && routeItems && <RouteLayer stops={route} items={routeItems} />}
         </g>
       </Svg>
 

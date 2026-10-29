@@ -1,7 +1,17 @@
 import type { CityIndex } from "../../data/cities";
-import type { Place } from "../../store/store.types";
-import { countryAnchors, toScreen, visibleUnits } from "./WorldMap.projection";
-import type { CityItem, CountryLabelItem, LabelLayout, PinItem, ProjectedCities, Side, Viewport } from "./WorldMap.types";
+import type { Place, TripStop } from "../../store/store.types";
+import { countryAnchors, projection, toScreen, visibleUnits } from "./WorldMap.projection";
+import type {
+  CityItem,
+  CountryLabelItem,
+  LabelLayout,
+  PinItem,
+  ProjectedCities,
+  RouteItem,
+  RouteLabelSide,
+  Side,
+  Viewport,
+} from "./WorldMap.types";
 
 export const CITY_FONT = 12;
 export const COUNTRY_FONT = 13;
@@ -101,15 +111,94 @@ export const computeBaseLayout = (
   return { countries: placedCountries, cities: placedCities };
 };
 
-export const applyPins = (viewport: Viewport, base: BaseLayout, placePoints: PlacePoint[]): LabelLayout => {
+export const ROUTE_RADIUS = 13;
+export const ROUTE_FONT = 13;
+const CLUSTER_PX = 26;
+const ROUTE_LABEL_MAX = 26;
+const ROUTE_LABEL_GAP = 6;
+const ROUTE_SIDES: RouteLabelSide[] = ["right", "left", "top", "bottom"];
+
+const routeTextWidth = (text: string) => text.length * ROUTE_FONT * 0.58;
+
+const shorten = (name: string) => (name.length > ROUTE_LABEL_MAX ? `${name.slice(0, ROUTE_LABEL_MAX - 1).trimEnd()}…` : name);
+
+// "6" for one stop, "6–7" for neighbours, "3, 6" otherwise.
+const numberText = (numbers: number[]) =>
+  numbers.length === 1
+    ? String(numbers[0])
+    : numbers.every((n, i) => i === 0 || n === numbers[i - 1] + 1)
+      ? `${numbers[0]}–${numbers[numbers.length - 1]}`
+      : numbers.join(", ");
+
+const routeLabelBox = (sx: number, sy: number, half: number, width: number, side: RouteLabelSide): Box => {
+  const h = ROUTE_FONT / 2 + 3;
+  const above = sy - ROUTE_RADIUS - ROUTE_LABEL_GAP;
+  const below = sy + ROUTE_RADIUS + ROUTE_LABEL_GAP;
+  if (side === "right") return [sx + half + ROUTE_LABEL_GAP - 2, sy - h, sx + half + ROUTE_LABEL_GAP + width + 2, sy + h];
+  if (side === "left") return [sx - half - ROUTE_LABEL_GAP - width - 2, sy - h, sx - half - ROUTE_LABEL_GAP + 2, sy + h];
+  if (side === "top") return [sx - width / 2 - 2, above - 2 * h, sx + width / 2 + 2, above];
+  return [sx - width / 2 - 2, below, sx + width / 2 + 2, below + 2 * h];
+};
+
+// Stops that would overlap on screen merge into one marker; each label then takes the first free side, or is left out.
+export const layoutRoute = (viewport: Viewport, stops: TripStop[]): { items: RouteItem[]; boxes: Box[] } => {
+  type Cluster = { stops: TripStop[]; numbers: number[]; ux: number; uy: number; sx: number; sy: number };
+  const clusters: Cluster[] = [];
+  stops.forEach((stop, i) => {
+    const p = projection([stop.lng, stop.lat]);
+    if (!p) return;
+    const [sx, sy] = toScreen(viewport, p[0], p[1]);
+    const near = clusters.find((c) => Math.hypot(c.sx - sx, c.sy - sy) < CLUSTER_PX);
+    if (near) {
+      near.stops.push(stop);
+      near.numbers.push(i + 1);
+    } else clusters.push({ stops: [stop], numbers: [i + 1], ux: p[0], uy: p[1], sx, sy });
+  });
+
+  const items: RouteItem[] = clusters.map((c) => {
+    const text = numberText(c.numbers);
+    return {
+      key: c.stops[0].id,
+      ux: c.ux,
+      uy: c.uy,
+      text,
+      width: Math.max(ROUTE_RADIUS * 2, text.length * 8 + 14),
+      label: null,
+      side: "right",
+      title: c.stops.map((s, i) => `${c.numbers[i]}. ${s.name}`).join("\n"),
+      site: c.stops.every((s) => Boolean(s.siteId)),
+    };
+  });
+  const boxes: Box[] = clusters.map((c, i) => [c.sx - items[i].width / 2, c.sy - ROUTE_RADIUS, c.sx + items[i].width / 2, c.sy + ROUTE_RADIUS]);
+
+  clusters.forEach((c, i) => {
+    const label = shorten(c.stops[0].name) + (c.stops.length > 1 ? ` +${c.stops.length - 1}` : "");
+    const width = routeTextWidth(label);
+    for (const side of ROUTE_SIDES) {
+      const box = routeLabelBox(c.sx, c.sy, items[i].width / 2, width, side);
+      if (boxes.some((b) => intersects(b, box))) continue;
+      boxes.push(box);
+      items[i].label = label;
+      items[i].side = side;
+      break;
+    }
+  });
+
+  return { items, boxes };
+};
+
+export const applyPins = (viewport: Viewport, base: BaseLayout, placePoints: PlacePoint[], routeBoxes: Box[] = []): LabelLayout => {
   const placedCityIds = new Set(placePoints.flatMap((p) => (p.place.cityId !== undefined ? [p.place.cityId] : [])));
-  const pinBoxes: Box[] = [];
+  // The open trip's route goes first: pins and labels in its way give way.
+  const pinBoxes: Box[] = [...routeBoxes];
   const pins: PinItem[] = [];
+  const underRoute = (sx: number, sy: number) => routeBoxes.some((b) => sx > b[0] && sx < b[2] && sy > b[1] && sy < b[3]);
 
   for (const { place, x, y } of placePoints) {
     if (Number.isNaN(x)) continue;
     const [sx, sy] = toScreen(viewport, x, y);
     if (sx < -EDGE || sy < -EDGE || sx > viewport.width + EDGE || sy > viewport.height + EDGE) continue;
+    if (underRoute(sx, sy)) continue;
     pinBoxes.push(pinBox(sx, sy));
     pins.push({ place, ux: x, uy: y, x: sx, y: sy, side: null });
   }

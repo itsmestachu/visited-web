@@ -3,9 +3,9 @@ import { select } from "d3-selection";
 import { zoom, zoomIdentity, zoomTransform, type ZoomBehavior } from "d3-zoom";
 import "d3-transition";
 import type { CityIndex } from "../../data/cities";
-import type { Place } from "../../store/store.types";
+import type { Place, TripStop } from "../../store/store.types";
 import { anchorFor, createViewport, HEIGHT, MAX_ZOOM, projection, toScreen, WIDTH } from "./WorldMap.projection";
-import { applyPins, computeBaseLayout } from "./WorldMap.layout";
+import { applyPins, computeBaseLayout, layoutRoute } from "./WorldMap.layout";
 import type { Focus, ProjectedCities, Size, ZoomState } from "./WorldMap.types";
 
 const IDENTITY: ZoomState = { x: 0, y: 0, k: 1 };
@@ -148,6 +148,7 @@ export const useLabelLayout = (
   cities: CityIndex | null,
   places: Place[],
   minCityPopulation: number,
+  route: TripStop[] | null,
 ) => {
   const viewport = useMemo(() => createViewport(zoomState, size), [zoomState, size]);
 
@@ -177,9 +178,11 @@ export const useLabelLayout = (
     [viewport, cities, projected, minCityPopulation],
   );
 
-  const layout = useMemo(() => applyPins(viewport, base, placePoints), [viewport, base, placePoints]);
+  const routeLayout = useMemo(() => (route ? layoutRoute(viewport, route) : null), [viewport, route]);
 
-  return { viewport, ...layout };
+  const layout = useMemo(() => applyPins(viewport, base, placePoints, routeLayout?.boxes), [viewport, base, placePoints, routeLayout]);
+
+  return { viewport, routeItems: routeLayout?.items ?? null, ...layout };
 };
 
 export const useLatestCallback = <A extends unknown[]>(fn: (...args: A) => void) => {

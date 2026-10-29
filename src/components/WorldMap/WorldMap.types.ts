@@ -28,6 +28,18 @@ export type UnitPoint = { ux: number; uy: number };
 
 export type PinItem = UnitPoint & { place: Place; x: number; y: number; side: Side | null };
 
+export type RouteLabelSide = "right" | "left" | "top" | "bottom";
+
+export type RouteItem = UnitPoint & {
+  key: string;
+  text: string;
+  width: number;
+  label: string | null;
+  side: RouteLabelSide;
+  title: string;
+  site: boolean;
+};
+
 export type CountryLabelItem = UnitPoint & { code: string; text: string };
 
 export type CityItem = UnitPoint & { city: City; side: Side };
