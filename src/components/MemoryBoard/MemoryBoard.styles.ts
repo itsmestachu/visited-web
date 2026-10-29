@@ -107,28 +107,42 @@ export const Stamps = styled.div`
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 14px;
+  gap: 10px 16px;
   max-width: 820px;
   margin: 0 auto 34px;
 `;
 
-// Postage stamp: the outer layer is a grid of holes, the inner face covers all of it except a thin perforated rim.
-export const Stamp = styled.div<{ $tone: string }>`
-  padding: 5px;
-  background: radial-gradient(circle at 5px 5px, transparent 2.6px, ${({ $tone }) => $tone} 3px) -5px -5px / 10px 10px;
-  filter: drop-shadow(2px 3px 0 rgba(58, 36, 24, 0.4));
+export const StampFigure = styled.div<{ $tilt: number }>`
+  position: relative;
+  width: 112px;
+  height: 112px;
+  transform: rotate(${({ $tilt }) => $tilt}deg);
+  filter: drop-shadow(2px 4px 2px rgba(36, 22, 14, 0.4));
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .paper {
+    fill: #fffdf6;
+  }
+
+  .ink {
+    fill: ${({ theme }) => theme.colors.ink};
+  }
 `;
 
-export const StampFace = styled.div<{ $tone: string }>`
+// Sits inside the stamp's window (15%-85% of the icon).
+export const StampText = styled.div`
+  position: absolute;
+  inset: 17%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 92px;
-  padding: 10px 10px 8px;
-  background: ${({ $tone }) => $tone};
-  outline: 1px dashed rgba(58, 36, 24, 0.35);
-  outline-offset: -5px;
+  text-align: center;
   color: ${({ theme }) => theme.colors.ink};
 
   strong {
@@ -138,11 +152,37 @@ export const StampFace = styled.div<{ $tone: string }>`
   }
 
   small {
-    margin-top: 4px;
-    font-size: 11px;
+    margin-top: 3px;
+    font-size: 9.5px;
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
+    line-height: 1.15;
     text-transform: uppercase;
+  }
+`;
+
+export const SectionLabel = styled.h3`
+  display: inline-block;
+  margin: 8px 0 22px;
+  padding: 4px 16px 6px;
+  background: ${({ theme }) => theme.colors.paper};
+  box-shadow: 2px 4px 8px rgba(36, 22, 14, 0.35);
+  transform: rotate(-1.5deg);
+  font-family: ${({ theme }) => theme.fonts.hand};
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+
+  small {
+    margin-left: 8px;
+    font-size: 20px;
+    color: ${({ theme }) => theme.colors.inkSoft};
+  }
+`;
+
+export const Section = styled.section`
+  & + & {
+    margin-top: 40px;
   }
 `;
 
@@ -268,13 +308,19 @@ export const SketchSvg = styled.svg`
   display: block;
   width: 100%;
   height: 100%;
-  background: ${({ theme }) => theme.colors.card};
+  background: ${({ theme }) => theme.colors.ocean};
 `;
 
 export const SketchCountry = styled.path`
   fill: ${({ theme }) => theme.colors.land};
+  stroke: ${({ theme }) => theme.colors.border};
+  stroke-width: 0.8px;
+`;
+
+export const SketchHome = styled.path`
+  fill: ${({ theme }) => theme.colors.landHover};
   stroke: ${({ theme }) => theme.colors.inkSoft};
-  stroke-width: 1px;
+  stroke-width: 1.2px;
 `;
 
 export const SketchRoute = styled.path`

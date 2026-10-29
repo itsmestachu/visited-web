@@ -7,4 +7,5 @@ export const ICON_PATHS: Record<IconName, string[]> = {
   close: ["M6 6l12 12", "M18 6L6 18"],
   search: ["M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14", "M20 20l-4-4"],
   camera: ["M4 8h4l2-3h4l2 3h4v11H4z", "M12 10a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7"],
+  edit: ["M4 20h4L19 9l-4-4L4 16z", "M13.5 6.5l4 4"],
 };

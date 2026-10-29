@@ -26,10 +26,54 @@ export const Ticks = styled.div`
   color: ${({ theme }) => theme.colors.inkSoft};
 `;
 
-export const AvatarRow = styled.div`
+export const Identity = styled.div`
   display: flex;
   align-items: center;
   gap: 14px;
+`;
+
+export const AvatarButton = styled.button`
+  position: relative;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+
+  svg {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    box-sizing: content-box;
+    padding: 4px;
+    border: 1.5px solid ${({ theme }) => theme.colors.ink};
+    border-radius: 50%;
+    background: ${({ theme }) => theme.colors.paper};
+  }
+`;
+
+export const IdentityText = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+export const IdentityName = styled.span<{ $empty: boolean }>`
+  font-family: ${({ theme }) => theme.fonts.serif};
+  font-size: 22px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  color: ${({ $empty, theme }) => ($empty ? theme.colors.inkSoft : theme.colors.ink)};
+`;
+
+export const IdentityBio = styled.span<{ $empty: boolean }>`
+  font-family: ${({ theme }) => theme.fonts.hand};
+  font-size: 19px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  color: ${({ theme }) => theme.colors.inkSoft};
+  opacity: ${({ $empty }) => ($empty ? 0.7 : 1)};
 `;
 
 export const AvatarPreview = styled.div`

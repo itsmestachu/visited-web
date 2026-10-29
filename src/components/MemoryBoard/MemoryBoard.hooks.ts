@@ -28,11 +28,9 @@ export const useMemories = (data: AppData) =>
   useMemo(() => {
     const places = Object.values(data.places);
     const trips = Object.values(data.trips);
-    const inDoneTrips = new Set<string>();
 
     const tripMemories: Memory[] = trips.map((trip) => {
       const own = tripPlaces(trip, places);
-      if (trip.status === "done") own.forEach((p) => inDoneTrips.add(p.id));
       const countries = [...new Set(trip.stops.map((s) => countryName(s.countryCode)))].join(", ");
       return {
         id: `trip-${trip.id}`,
@@ -47,7 +45,7 @@ export const useMemories = (data: AppData) =>
     });
 
     const placeMemories: Memory[] = places
-      .filter((p) => p.status === "visited" && p.photos.length > 0 && !inDoneTrips.has(p.id))
+      .filter((p) => p.status === "visited")
       .map((p) => ({
         id: `place-${p.id}`,
         title: p.name,
@@ -60,10 +58,11 @@ export const useMemories = (data: AppData) =>
       }));
 
     const byDateDesc = (a: Memory, b: Memory) => b.sortKey.localeCompare(a.sortKey);
-    return [
-      ...tripMemories.filter((m) => m.planned).sort((a, b) => a.sortKey.localeCompare(b.sortKey)),
-      ...[...tripMemories.filter((m) => !m.planned), ...placeMemories].sort(byDateDesc),
-    ];
+    return {
+      planned: tripMemories.filter((m) => m.planned).sort((a, b) => a.sortKey.localeCompare(b.sortKey)),
+      trips: tripMemories.filter((m) => !m.planned).sort(byDateDesc),
+      places: placeMemories.sort(byDateDesc),
+    };
   }, [data.places, data.trips]);
 
 // Stable pseudo-random tilt per card, so the wall looks hand-pinned but doesn't reshuffle on every render.
