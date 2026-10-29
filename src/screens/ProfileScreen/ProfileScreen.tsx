@@ -1,4 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+import { Field } from "../../components/Field/Field";
+import { Input, TextArea } from "../../components/Field/Field.styles";
+import { usePhotoUrl } from "../../services/photoStorage/photoStorage.hooks";
+import type { Profile } from "../../store/store.types";
 import type { CityIndex } from "../../data/cities";
 import { ErrorText, Muted, ScreenLayout, Section } from "../../components/ScreenLayout/ScreenLayout";
 import { Button } from "../../components/Button/Button";
@@ -9,9 +13,12 @@ import { tripSummary } from "../../services/trips/trips";
 import { Segmented } from "../../components/Segmented/Segmented";
 import { CITY_POPULATION_STEPS, formatPopulation, type Settings } from "../../services/settings/settings";
 import { plural } from "../../utils/text";
-import { SettingLabel, Slider, SoonBadge, Ticks } from "./ProfileScreen.styles";
+import { AvatarPreview, AvatarRow, SettingLabel, Slider, SoonBadge, Ticks } from "./ProfileScreen.styles";
 
 type Props = {
+  profile: Profile;
+  onProfile: (patch: Partial<Profile>) => void;
+  onAvatar: (file: File) => void;
   settings: Settings;
   cities: CityIndex | null;
   trips: Trip[];
@@ -26,7 +33,20 @@ const LANGUAGES = [
   { value: "en" as const, label: "English", disabled: true, hint: "Wkrótce" },
 ];
 
-export function ProfileScreen({ settings, cities, trips, linkError, onSettings, onNewTrip, onOpenTrip }: Props) {
+export function ProfileScreen({
+  profile,
+  onProfile,
+  onAvatar,
+  settings,
+  cities,
+  trips,
+  linkError,
+  onSettings,
+  onNewTrip,
+  onOpenTrip,
+}: Props) {
+  const avatarInput = useRef<HTMLInputElement>(null);
+  const avatarUrl = usePhotoUrl(profile.avatarId ?? "", "thumb");
   const stepIndex = Math.max(0, CITY_POPULATION_STEPS.indexOf(settings.minCityPopulation));
   const shown = useMemo(
     () => (cities ? cities.list.filter((c) => c.population >= settings.minCityPopulation).length : null),
@@ -36,10 +56,43 @@ export function ProfileScreen({ settings, cities, trips, linkError, onSettings, 
   return (
     <ScreenLayout>
       <Section title="Konto">
-        <SoonBadge>Wkrótce</SoonBadge>
+        <AvatarRow>
+          <AvatarPreview>{avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{profile.name?.trim()[0]?.toUpperCase() ?? "?"}</span>}</AvatarPreview>
+          <Button variant="outline" onClick={() => avatarInput.current?.click()}>
+            {profile.avatarId ? "Zmień zdjęcie" : "Dodaj zdjęcie"}
+          </Button>
+          <input
+            ref={avatarInput}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onAvatar(file);
+              e.target.value = "";
+            }}
+          />
+        </AvatarRow>
+        <Field label="Imię lub nick">
+          <Input
+            value={profile.name ?? ""}
+            maxLength={60}
+            placeholder="Np. Ania w drodze"
+            onChange={(e) => onProfile({ name: e.target.value || undefined })}
+          />
+        </Field>
+        <Field label="O mnie">
+          <TextArea
+            rows={2}
+            maxLength={200}
+            placeholder="Kilka słów o Twoich podróżach…"
+            value={profile.bio ?? ""}
+            onChange={(e) => onProfile({ bio: e.target.value || undefined })}
+          />
+        </Field>
         <Muted>
-          Na razie wszystko zapisuje się tylko w tej przeglądarce. Z kontem Twoja mapa będzie dostępna na każdym urządzeniu i
-          będzie można ją pokazać znajomym.
+          <SoonBadge>Wkrótce</SoonBadge> Logowanie: z kontem tablica i mapa będą na każdym urządzeniu i pod linkiem dla znajomych.
+          Na razie wszystko zapisuje się w tej przeglądarce.
         </Muted>
       </Section>
 

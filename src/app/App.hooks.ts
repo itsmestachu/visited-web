@@ -317,3 +317,13 @@ export const useWishSuggestions = (data: AppData, unesco: UnescoIndex | null) =>
     });
     return [...places, ...sites];
   }, [data.places, data.collections, unesco]);
+
+export const useAvatar = (currentId: string | undefined, dispatch: Dispatch) =>
+  useCallback(
+    async (file: File) => {
+      const avatarId = await savePhoto(file);
+      dispatch({ type: "updateProfile", patch: { avatarId } });
+      if (currentId) void deletePhoto(currentId);
+    },
+    [currentId, dispatch],
+  );

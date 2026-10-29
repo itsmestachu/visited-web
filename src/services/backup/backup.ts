@@ -31,7 +31,8 @@ const toDataUrl = (blob: Blob) =>
 const toBlob = async (dataUrl: string) => (await fetch(dataUrl)).blob();
 
 export const exportBackup = async (data: AppData) => {
-  const stored = await readPhotos(Object.values(data.places).flatMap((p) => p.photos));
+  const avatar = data.profile.avatarId ? [data.profile.avatarId] : [];
+  const stored = await readPhotos([...Object.values(data.places).flatMap((p) => p.photos), ...avatar]);
   const photos = await Promise.all(
     stored.map(async (p) => ({ id: p.id, createdAt: p.createdAt, full: await toDataUrl(p.full), thumb: await toDataUrl(p.thumb) })),
   );

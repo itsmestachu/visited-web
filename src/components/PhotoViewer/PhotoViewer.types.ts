@@ -5,5 +5,5 @@ export type PhotoViewerProps = {
   startIndex: number;
   autoplay: boolean;
   onClose: () => void;
-  onDelete: (photoId: string) => void;
+  onDelete?: (photoId: string) => void;
 };

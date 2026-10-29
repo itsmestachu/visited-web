@@ -56,7 +56,10 @@ export type AppData = {
   places: Record<string, Place>;
   collections: Record<string, Record<string, SiteEntry>>;
   trips: Record<string, Trip>;
+  profile: Profile;
 };
+
+export type Profile = { name?: string; bio?: string; avatarId?: string };
 
 export type Action =
   | { type: "clickCountry"; code: string; mode: Status }
@@ -75,6 +78,7 @@ export type Action =
   | { type: "setSite"; collection: string; siteId: string; status: Status | null; countryCode?: string }
   | { type: "saveTrip"; trip: Trip }
   | { type: "updateTrip"; id: string; patch: Partial<Trip> }
-  | { type: "removeTrip"; id: string };
+  | { type: "removeTrip"; id: string }
+  | { type: "updateProfile"; patch: Partial<Profile> };
 
 export type Dispatch = (action: Action) => void;

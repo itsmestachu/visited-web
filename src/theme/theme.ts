@@ -20,6 +20,7 @@ export const theme = {
   fonts: {
     body: "'Outfit', system-ui, sans-serif",
     serif: "'DM Serif Display', Georgia, serif",
+    hand: "'Caveat', 'Segoe Print', cursive",
   },
   radius: {
     sm: "6px",

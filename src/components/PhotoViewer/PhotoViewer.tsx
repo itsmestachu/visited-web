@@ -24,9 +24,11 @@ export function PhotoViewer({ title, subtitle, photoIds, startIndex, autoplay, o
             {index + 1} / {count}
           </Count>
           {count > 1 && <TopButton onClick={togglePlay}>{playing ? "❚❚ Pauza" : "▶ Pokaz"}</TopButton>}
-          <TopButton $danger onClick={() => onDelete(current)}>
-            Usuń zdjęcie
-          </TopButton>
+          {onDelete && (
+            <TopButton $danger onClick={() => onDelete(current)}>
+              Usuń zdjęcie
+            </TopButton>
+          )}
           <TopButton onClick={onClose} aria-label="Zamknij">
             ✕
           </TopButton>

@@ -8,6 +8,7 @@ import { Field } from "../../components/Field/Field";
 import { Input } from "../../components/Field/Field.styles";
 import { NoteField } from "../../components/NoteField/NoteField";
 import { ScreenHeader } from "../../components/ScreenHeader/ScreenHeader";
+import { Segmented } from "../../components/Segmented/Segmented";
 import { Muted, ScreenLayout, Section } from "../../components/ScreenLayout/ScreenLayout";
 import { dayLabel, orderedStops, stopFromCity, stopFromSite, tripSummary, withDates, withDays } from "../../services/trips/trips";
 import { StopSearch } from "./StopSearch";
@@ -31,7 +32,12 @@ import {
 } from "./TripScreen.styles";
 import type { TripScreenProps } from "./TripScreen.types";
 
-const stopKey = (s: Pick<TripStop, "cityId" | "siteId" | "name">) =>
+const TRIP_STATUS = [
+  { value: "planned" as const, label: "★ Planowany", tone: "wish" as const },
+  { value: "done" as const, label: "✓ Odbyty", tone: "red" as const },
+];
+
+const stopKey =(s: Pick<TripStop, "cityId" | "siteId" | "name">) =>
   s.siteId ? `s-${s.siteId}` : s.cityId ? `c-${s.cityId}` : `n-${s.name}`;
 
 export function TripScreen({
@@ -131,6 +137,11 @@ export function TripScreen({
         </Banner>
       ) : (
         <>
+          <Segmented
+            options={TRIP_STATUS}
+            value={trip.status}
+            onChange={(status) => onChange({ status })}
+          />
           <Field label="Nazwa">
             <Input value={trip.name} maxLength={120} onChange={(e) => onChange({ name: e.target.value })} />
           </Field>

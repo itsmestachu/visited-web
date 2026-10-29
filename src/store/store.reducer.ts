@@ -89,6 +89,8 @@ export const reducer = (data: AppData, action: Action): AppData => {
       const current = data.trips[action.id];
       return current ? { ...data, trips: { ...data.trips, [action.id]: { ...current, ...action.patch } } } : data;
     }
+    case "updateProfile":
+      return { ...data, profile: { ...data.profile, ...action.patch } };
     case "removeTrip": {
       const trips = { ...data.trips };
       delete trips[action.id];

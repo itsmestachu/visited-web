@@ -25,7 +25,8 @@ import { useBackup } from "../services/backup/backup.hooks";
 import { TripScreen } from "../screens/TripScreen/TripScreen";
 import type { Trip } from "../store/store.types";
 import { orderedStops } from "../services/trips/trips";
-import { useNavigation, usePlaceUploads, useTravelActions, useTrips, useWishSuggestions } from "./App.hooks";
+import { MemoryBoard } from "../components/MemoryBoard/MemoryBoard";
+import { useAvatar, useNavigation, usePlaceUploads, useTravelActions, useTrips, useWishSuggestions } from "./App.hooks";
 import { Body, Card, Frame, MapArea, MapColumn, Panel } from "./App.styles";
 
 const NO_SITES = {};
@@ -57,6 +58,9 @@ export default function App() {
           : undefined;
   const route = useMemo(() => (activeTrip ? orderedStops(activeTrip.stops) : null), [activeTrip]);
   const suggestions = useWishSuggestions(data, unesco);
+  // The profile tab shows the memory wall in place of the map, unless a trip is open and needs its route.
+  const showBoard = nav.tab === "profile" && !activeTrip;
+  const changeAvatar = useAvatar(data.profile.avatarId, dispatch);
   const backup = useBackup(data, dispatch);
   const [mode, setMode] = useState<Status>("visited");
 
@@ -98,6 +102,9 @@ export default function App() {
       }
       return (
         <ProfileScreen
+          profile={data.profile}
+          onProfile={(patch) => dispatch({ type: "updateProfile", patch })}
+          onAvatar={(file) => void changeAvatar(file)}
           settings={settings}
           cities={cities}
           trips={tripList}
@@ -185,51 +192,65 @@ export default function App() {
         <Body>
           <Panel>{renderPanel()}</Panel>
           <MapColumn>
-            <MapArea>
-              <WorldMap
-                countries={data.countries}
-                places={places}
-                cities={cities}
-                minCityPopulation={settings.minCityPopulation}
-                mode={mode}
-                activePlaceId={activePlace?.id ?? null}
-                cardPlaceId={nav.cardPlaceId}
-                focus={nav.focus}
-                onCountryClick={(code) => actions.clickCountry(code, mode)}
-                onCityClick={(city) => actions.selectCity(city, mode, false)}
-                onPlaceClick={nav.openPlace}
-                route={route}
-                sites={showUnesco && unesco ? unesco.list : null}
-                collectedSites={collectedSites}
-                onSiteClick={(site) => actions.clickSite(site, mode)}
-                renderPinCard={(pin, area) => (
-                  <PlaceCard
-                    place={pin.place}
-                    x={pin.x}
-                    y={pin.y}
-                    area={area}
-                    uploading={uploads.progressFor(pin.place.id)}
-                    onAddPhotos={(files) => uploads.upload(pin.place.id, files)}
-                    onOpenPhoto={(index, autoplay) => nav.openViewer(pin.place.id, index, autoplay)}
-                    onDeletePhoto={(photoId) => actions.removePhoto(pin.place.id, photoId)}
-                    onDelete={() => actions.removePlace(pin.place.id)}
-                    onClose={nav.closeCard}
-                  />
-                )}
-                overlay={
-                  <>
-                    <ModeSwitch mode={mode} onChange={setMode} />
-                    <LayerToggle
-                      label="UNESCO"
-                      count={unesco ? `${Object.values(collectedSites).filter((e) => e.status === "visited").length}/${unesco.list.length}` : undefined}
-                      on={showUnesco}
-                      onChange={setShowUnesco}
-                    />
-                  </>
-                }
+            {showBoard ? (
+              <MemoryBoard
+                data={data}
+                unescoTotal={unesco?.list.length ?? 0}
+                onOpenTrip={(id) => {
+                  nav.openTrip(id);
+                  nav.focusStops(data.trips[id]?.stops ?? []);
+                }}
+                onOpenPlace={openPlaceAndFocus}
               />
-            </MapArea>
-            <MapLegend mode={mode} />
+            ) : (
+              <>
+                <MapArea>
+                  <WorldMap
+                    countries={data.countries}
+                    places={places}
+                    cities={cities}
+                    minCityPopulation={settings.minCityPopulation}
+                    mode={mode}
+                    activePlaceId={activePlace?.id ?? null}
+                    cardPlaceId={nav.cardPlaceId}
+                    focus={nav.focus}
+                    onCountryClick={(code) => actions.clickCountry(code, mode)}
+                    onCityClick={(city) => actions.selectCity(city, mode, false)}
+                    onPlaceClick={nav.openPlace}
+                    route={route}
+                    sites={showUnesco && unesco ? unesco.list : null}
+                    collectedSites={collectedSites}
+                    onSiteClick={(site) => actions.clickSite(site, mode)}
+                    renderPinCard={(pin, area) => (
+                      <PlaceCard
+                        place={pin.place}
+                        x={pin.x}
+                        y={pin.y}
+                        area={area}
+                        uploading={uploads.progressFor(pin.place.id)}
+                        onAddPhotos={(files) => uploads.upload(pin.place.id, files)}
+                        onOpenPhoto={(index, autoplay) => nav.openViewer(pin.place.id, index, autoplay)}
+                        onDeletePhoto={(photoId) => actions.removePhoto(pin.place.id, photoId)}
+                        onDelete={() => actions.removePlace(pin.place.id)}
+                        onClose={nav.closeCard}
+                      />
+                    )}
+                    overlay={
+                      <>
+                        <ModeSwitch mode={mode} onChange={setMode} />
+                        <LayerToggle
+                          label="UNESCO"
+                          count={unesco ? `${Object.values(collectedSites).filter((e) => e.status === "visited").length}/${unesco.list.length}` : undefined}
+                          on={showUnesco}
+                          onChange={setShowUnesco}
+                        />
+                      </>
+                    }
+                  />
+                </MapArea>
+                <MapLegend mode={mode} />
+              </>
+            )}
           </MapColumn>
         </Body>
       </Card>
