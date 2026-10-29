@@ -118,33 +118,6 @@ export const StampFigure = styled.div`
   }
 `;
 
-// Round cancellation mark overlapping the stamp's lower-left corner.
-export const Postmark = styled.svg`
-  position: absolute;
-  left: -72px;
-  bottom: -10px;
-  width: 120px;
-  height: 80px;
-  transform: rotate(-14deg);
-  opacity: 0.72;
-  overflow: visible;
-  pointer-events: none;
-
-  circle,
-  .waves {
-    fill: none;
-    stroke: ${({ theme }) => theme.colors.wish};
-    stroke-width: 1.6px;
-  }
-
-  text {
-    font-family: ${({ theme }) => theme.fonts.body};
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    fill: ${({ theme }) => theme.colors.wish};
-  }
-`;
-
 export const Marks = styled.div`
   display: flex;
   flex-wrap: wrap;

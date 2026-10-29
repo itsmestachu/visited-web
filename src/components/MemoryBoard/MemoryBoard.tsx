@@ -39,8 +39,6 @@ type Props = {
   onCover: (memory: Memory, cover: string) => void;
 };
 
-const YEAR = new Date().getFullYear();
-
 function Cover({ memory }: { memory: Memory }) {
   const photo = coverPhoto(memory);
   const url = usePhotoUrl(photo ?? "", "thumb");
@@ -96,7 +94,7 @@ export function MemoryBoard({ data, unescoTotal, onOpenTrip, onOpenPlace, onCove
             ))}
           </Marks>
         </Who>
-        <PostageStamp imageUrl={data.profile.avatarId ? avatarUrl : null} initial={name[0].toUpperCase()} year={YEAR} />
+        <PostageStamp imageUrl={data.profile.avatarId ? avatarUrl : null} initial={name[0].toUpperCase()} />
       </Card>
 
       {sections.length === 0 && (
