@@ -88,6 +88,19 @@ export const StopText = styled.div`
   }
 `;
 
+export const NearbyLink = styled.button`
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: ${({ theme }) => theme.colors.red};
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
 export const StopTools = styled.div`
   flex: none;
   display: flex;

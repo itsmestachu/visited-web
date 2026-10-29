@@ -89,8 +89,9 @@ export function ProfileScreen({ settings, cities, trips, linkError, onSettings, 
 
       <Section title="Prywatność">
         <Muted>
-          Twoje kraje, miasta i zdjęcia są zapisane tylko w tej przeglądarce i nie są nigdzie wysyłane. Pełna polityka
-          prywatności pojawi się razem z kontami.
+          Twoje kraje, miasta i zdjęcia są zapisane tylko w tej przeglądarce i nie są nigdzie wysyłane. Wyjątek: gdy otworzysz
+          „Co w okolicy” w planerze, współrzędne tego miejsca idą do OpenStreetMap i Wikipedii, żeby pobrać listę noclegów,
+          restauracji i atrakcji. Pełna polityka prywatności pojawi się razem z kontami.
         </Muted>
       </Section>
     </ScreenLayout>

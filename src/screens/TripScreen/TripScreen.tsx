@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import type { NearbyPlace } from "../../services/nearby/nearby";
+import { NearbyDialog } from "./NearbyDialog";
 import { countryName } from "../../data/countries";
 import type { TripStop } from "../../store/store.types";
 import { Button } from "../../components/Button/Button";
@@ -17,6 +19,7 @@ import {
   DayBox,
   DayHead,
   DayStepper,
+  NearbyLink,
   Note,
   Row,
   Stop,
@@ -47,6 +50,8 @@ export function TripScreen({
 }: TripScreenProps) {
   const [targetDay, setTargetDay] = useState(trip.days);
   const [newItem, setNewItem] = useState("");
+  const [nearbyFor, setNearbyFor] = useState<TripStop | null>(null);
+  const closeNearby = useCallback(() => setNearbyFor(null), []);
   const addDay = Math.min(targetDay, trip.days);
   const editable = !shared;
   const ordered = orderedStops(trip.stops);
@@ -70,6 +75,24 @@ export function TripScreen({
     onChange({ stops });
   };
 
+  // Places found nearby go right after their city (and after earlier finds), on the same day.
+  const addNearby = (from: TripStop, place: NearbyPlace) => {
+    const stop: TripStop = {
+      id: crypto.randomUUID(),
+      name: place.name,
+      countryCode: from.countryCode,
+      lat: place.lat,
+      lng: place.lng,
+      day: from.day,
+      kind: place.kind,
+    };
+    const stops = [...trip.stops];
+    let at = stops.findIndex((s) => s.id === from.id) + 1;
+    while (at < stops.length && stops[at].day === from.day && stops[at].kind) at++;
+    stops.splice(at, 0, stop);
+    onChange({ stops });
+  };
+
   const updateStop = (id: string, patch: Partial<TripStop>) =>
     onChange({ stops: trip.stops.map((s) => (s.id === id ? { ...s, ...patch } : s)) });
 
@@ -82,6 +105,14 @@ export function TripScreen({
 
   return (
     <ScreenLayout>
+      {nearbyFor && (
+        <NearbyDialog
+          stop={nearbyFor}
+          planned={trip.stops}
+          onAdd={editable ? (place) => addNearby(nearbyFor, place) : undefined}
+          onClose={closeNearby}
+        />
+      )}
       <ScreenHeader
         title={trip.name}
         subtitle={tripSummary(trip)}
@@ -185,7 +216,17 @@ export function TripScreen({
                       <StopNumber $site={Boolean(stop.siteId)}>{number.get(stop.id)}</StopNumber>
                       <StopText>
                         <span>{stop.name}</span>
-                        <small>{[countryName(stop.countryCode), stop.siteId ? "UNESCO" : ""].filter(Boolean).join(" · ")}</small>
+                        <small>
+                          {[countryName(stop.countryCode), stop.siteId ? "UNESCO" : "", stop.kind].filter(Boolean).join(" · ")}
+                          {!stop.kind && (
+                            <>
+                              {" · "}
+                              <NearbyLink type="button" onClick={() => setNearbyFor(stop)}>
+                                Co w okolicy
+                              </NearbyLink>
+                            </>
+                          )}
+                        </small>
                       </StopText>
                       {editable && (
                         <StopTools>

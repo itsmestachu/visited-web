@@ -32,6 +32,7 @@ export type TripStop = {
   day: number;
   cityId?: number;
   siteId?: string;
+  kind?: string;
 };
 
 export type ChecklistItem = { id: string; text: string; done: boolean };
