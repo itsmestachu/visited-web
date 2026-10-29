@@ -1,0 +1,83 @@
+import { useMemo } from "react";
+import { countryName } from "../../data/countries";
+import type { AppData, Place, Trip, TripStop } from "../../store/store.types";
+import { tripDates } from "../../services/trips/trips";
+import { formatDate } from "../../utils/dates";
+import { SKETCH_COVER } from "../PhotoViewer/PhotoViewer.types";
+
+export type Memory = {
+  id: string;
+  title: string;
+  subtitle: string;
+  planned: boolean;
+  photoIds: string[];
+  cover?: string;
+  stops: TripStop[];
+  sortKey: string;
+  open: { kind: "trip"; id: string } | { kind: "place"; id: string };
+};
+
+const sameCity = (place: Place, stop: TripStop) =>
+  place.countryCode === stop.countryCode && (stop.cityId !== undefined ? place.cityId === stop.cityId : place.name === stop.name);
+
+// A trip's photos are the photos of the visited cities on its route, so nothing is stored twice.
+const tripPlaces = (trip: Trip, places: Place[]) =>
+  places.filter((p) => p.status === "visited" && trip.stops.some((s) => sameCity(p, s)));
+
+const placeStop = (p: Place): TripStop => ({ id: p.id, name: p.name, countryCode: p.countryCode, lat: p.lat, lng: p.lng, day: 1 });
+
+export const useMemories = (data: AppData) =>
+  useMemo(() => {
+    const places = Object.values(data.places);
+    const trips = Object.values(data.trips);
+
+    const tripMemories: Memory[] = trips.map((trip) => {
+      const own = tripPlaces(trip, places);
+      const countries = [...new Set(trip.stops.map((s) => countryName(s.countryCode)))].join(", ");
+      return {
+        id: `trip-${trip.id}`,
+        title: trip.name,
+        subtitle: [tripDates(trip), countries].filter(Boolean).join(" · "),
+        planned: trip.status === "planned",
+        photoIds: trip.status === "done" ? own.flatMap((p) => p.photos) : [],
+        cover: trip.cover,
+        stops: trip.stops,
+        sortKey: trip.startDate ?? new Date(trip.createdAt).toISOString().slice(0, 10),
+        open: { kind: "trip", id: trip.id },
+      };
+    });
+
+    const placeMemories: Memory[] = places
+      .filter((p) => p.status === "visited")
+      .map((p) => ({
+        id: `place-${p.id}`,
+        title: p.name,
+        subtitle: [formatDate(p.date), countryName(p.countryCode)].filter(Boolean).join(" · "),
+        planned: false,
+        photoIds: p.photos,
+        cover: p.cover,
+        stops: [placeStop(p)],
+        sortKey: p.date ?? new Date(p.createdAt).toISOString().slice(0, 10),
+        open: { kind: "place", id: p.id },
+      }));
+
+    const byDateDesc = (a: Memory, b: Memory) => b.sortKey.localeCompare(a.sortKey);
+    return {
+      planned: tripMemories.filter((m) => m.planned).sort((a, b) => a.sortKey.localeCompare(b.sortKey)),
+      trips: tripMemories.filter((m) => !m.planned).sort(byDateDesc),
+      places: placeMemories.sort(byDateDesc),
+    };
+  }, [data.places, data.trips]);
+
+// The photo shown on the card: the chosen one while it still exists, else the first; null means the drawn sketch.
+export const coverPhoto = (m: Pick<Memory, "photoIds" | "cover">) => {
+  if (m.cover === SKETCH_COVER) return null;
+  return m.cover && m.photoIds.includes(m.cover) ? m.cover : (m.photoIds[0] ?? null);
+};
+
+// Stable pseudo-random tilt per card, so the wall looks hand-pinned but doesn't reshuffle on every render.
+export const tiltFor = (id: string) => {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return ((Math.abs(h) % 50) - 25) / 10;
+};

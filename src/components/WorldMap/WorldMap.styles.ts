@@ -175,6 +175,126 @@ export const PinGroup = styled.g<{ $status: Status; $active: boolean }>`
   }
 `;
 
+export const SiteMark = styled.g<{ $status: Status | "none" }>`
+  cursor: pointer;
+
+  .hit {
+    fill: transparent;
+  }
+
+  path {
+    fill: ${({ $status, theme }) => ($status === "visited" ? theme.colors.mustard : theme.colors.paper)};
+    stroke: ${({ $status, theme }) => ($status === "wish" ? theme.colors.wish : theme.colors.ink)};
+    stroke-width: ${({ $status }) => ($status === "none" ? "1.2px" : "1.8px")};
+    opacity: ${({ $status }) => ($status === "none" ? 0.75 : 1)};
+    transition: transform 120ms;
+  }
+
+  &:hover path {
+    fill: var(--hover-accent);
+    stroke: var(--hover-accent);
+    opacity: 1;
+    transform: scale(1.4);
+  }
+`;
+
+export const LandmarkMark = styled.g<{ $status: Status | "none" }>`
+  cursor: pointer;
+
+  circle {
+    fill: ${({ $status, theme }) => ($status === "visited" ? theme.colors.red : theme.colors.paper)};
+    stroke: ${({ $status, theme }) => ($status === "wish" ? theme.colors.wish : theme.colors.ink)};
+    stroke-width: ${({ $status }) => ($status === "wish" ? "2px" : "1.4px")};
+    stroke-dasharray: ${({ $status }) => ($status === "wish" ? "3 2" : "none")};
+    transition: transform 120ms;
+  }
+
+  .icon {
+    fill: ${({ $status, theme }) => ($status === "visited" ? theme.colors.paper : $status === "wish" ? theme.colors.wish : theme.colors.ink)};
+    pointer-events: none;
+  }
+
+  text {
+    font-family: ${({ theme }) => theme.fonts.body};
+    font-weight: 700;
+    fill: ${({ theme }) => theme.colors.ink};
+    ${halo}
+  }
+
+  &:hover circle {
+    transform: scale(1.18);
+    stroke: var(--hover-accent);
+  }
+
+  &:hover text {
+    fill: var(--hover-accent);
+  }
+`;
+
+export const ClusterTile = styled.g`
+  cursor: pointer;
+
+  rect {
+    stroke: ${({ theme }) => theme.colors.ink};
+    stroke-width: 1.6px;
+  }
+
+  .back {
+    fill: ${({ theme }) => theme.colors.paper};
+  }
+
+  .front {
+    fill: ${({ theme }) => theme.colors.mustard};
+  }
+
+  .count {
+    font-family: ${({ theme }) => theme.fonts.body};
+    font-weight: 800;
+    fill: ${({ theme }) => theme.colors.ink};
+  }
+
+  .label {
+    font-family: ${({ theme }) => theme.fonts.body};
+    font-weight: 700;
+    fill: ${({ theme }) => theme.colors.ink};
+    ${halo}
+  }
+
+  &:hover .front {
+    fill: var(--hover-accent);
+  }
+`;
+
+export const RouteLine = styled.path`
+  fill: none;
+  stroke: ${({ theme }) => theme.colors.red};
+  stroke-width: 2.6px;
+  stroke-dasharray: 7 5;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+`;
+
+export const RouteMark = styled.g`
+  circle,
+  rect {
+    fill: ${({ theme }) => theme.colors.red};
+    stroke: ${({ theme }) => theme.colors.paper};
+    stroke-width: 2.4px;
+  }
+
+  text {
+    font-family: ${({ theme }) => theme.fonts.body};
+    font-weight: 800;
+    fill: ${({ theme }) => theme.colors.paper};
+  }
+
+  .label {
+    font-weight: 700;
+    fill: ${({ theme }) => theme.colors.ink};
+    ${halo}
+  }
+`;
+
 export const ScreenScale = styled.g`
   transform: scale(var(--inv, 1));
 `;

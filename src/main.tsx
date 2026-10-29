@@ -8,6 +8,8 @@ import "@fontsource/outfit/700.css";
 import "@fontsource/outfit/800.css";
 import "@fontsource/dm-serif-display/400.css";
 import "@fontsource/dm-serif-display/400-italic.css";
+import "@fontsource/caveat/500.css";
+import "@fontsource/caveat/700.css";
 import { theme } from "./theme/theme";
 import { GlobalStyle } from "./theme/GlobalStyle";
 import App from "./app/App";

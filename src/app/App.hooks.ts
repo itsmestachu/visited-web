@@ -1,11 +1,18 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AppTab } from "../components/AppHeader/AppHeader.types";
 import type { Focus } from "../components/WorldMap/WorldMap.types";
 import type { UndoToastInput } from "../components/Toast/Toast.types";
-import type { City } from "../data/data.types";
+import type { City, Landmark, UnescoSite } from "../data/data.types";
+import { LANDMARKS } from "../data/landmarks";
 import { countryName } from "../data/countries";
+import { UNESCO } from "../data/unesco";
 import { placeFromCity } from "../store/store.factories";
-import type { AppData, Dispatch, Place, Status } from "../store/store.types";
+import type { AppData, Dispatch, Place, Status, Trip, TripStop } from "../store/store.types";
+import { newTrip, stopFromPlace, stopFromSite } from "../services/trips/trips";
+import type { UnescoIndex } from "../data/unesco";
+import type { WishSuggestion } from "../screens/TripScreen/TripScreen.types";
+import type { CollectedRow } from "../screens/HomeScreen/HomeScreen.types";
+import { decodeTrip, encodeTrip, SHARE_PREFIX, type SharedTrip } from "../services/trips/trips.share";
 import { deletePhoto, savePhoto } from "../services/photoStorage/photoStorage";
 import type { UploadProgress } from "../services/photoStorage/photoStorage.hooks";
 import type { PanelView, ViewerState } from "./App.types";
@@ -40,6 +47,22 @@ export const useNavigation = () => {
 
   const focusPoint = useCallback((lng: number, lat: number) => setFocus({ kind: "point", lng, lat, nonce: Date.now() }), []);
 
+  const focusStops = useCallback((stops: TripStop[]) => {
+    if (stops.length > 0) setFocus({ kind: "points", points: stops.map((s) => [s.lng, s.lat]), nonce: Date.now() });
+  }, []);
+
+  const openTrip = useCallback((id: string) => {
+    setTab("profile");
+    setView({ type: "trip", id });
+    setCardPlaceId(null);
+  }, []);
+
+  const openSharedTrip = useCallback(() => {
+    setTab("profile");
+    setView({ type: "sharedTrip" });
+    setCardPlaceId(null);
+  }, []);
+
   return {
     tab,
     setTab,
@@ -56,6 +79,9 @@ export const useNavigation = () => {
     focusCountry,
     focusPlace,
     focusPoint,
+    focusStops,
+    openTrip,
+    openSharedTrip,
   };
 };
 
@@ -130,7 +156,36 @@ export const useTravelActions = (data: AppData, dispatch: Dispatch, nav: Nav, sh
     });
   };
 
-  return { clickCountry, removeCountry, removePlace, removePhoto, selectCity };
+  // Marks an item of a collection (UNESCO, famous landmarks…); a single-country item also marks its country.
+  const setCollectionItem = (collection: string, item: { id: string; name: string; countryCodes: string[] }, status: Status | null) => {
+    const previous = data.collections[collection]?.[item.id]?.status ?? null;
+    const code = item.countryCodes.length === 1 ? item.countryCodes[0] : undefined;
+    const previousCountry = code ? data.countries[code] : undefined;
+    dispatch({ type: "setSite", collection, siteId: item.id, status, countryCode: code });
+    showToast({
+      message: `${status ? "Zaznaczono" : "Odznaczono"}: ${item.name}`,
+      onUndo: () => {
+        dispatch({ type: "setSite", collection, siteId: item.id, status: previous });
+        if (!code) return;
+        if (previousCountry) dispatch({ type: "restoreCountry", code, entry: previousCountry });
+        else dispatch({ type: "removeCountry", code });
+      },
+    });
+  };
+
+  const setSite = (site: UnescoSite, status: Status | null) => setCollectionItem(UNESCO, site, status);
+
+  const clickSite = (site: UnescoSite, mode: Status) =>
+    setSite(site, data.collections[UNESCO]?.[site.id]?.status === mode ? null : mode);
+
+  const clickLandmark = (landmark: Landmark, mode: Status) =>
+    setCollectionItem(
+      LANDMARKS,
+      { id: landmark.id, name: landmark.name, countryCodes: [landmark.countryCode] },
+      data.collections[LANDMARKS]?.[landmark.id]?.status === mode ? null : mode,
+    );
+
+  return { clickCountry, removeCountry, removePlace, removePhoto, selectCity, setSite, clickSite, clickLandmark, setCollectionItem };
 };
 
 const omitKey = <T,>(record: Record<string, T>, key: string) => {
@@ -170,3 +225,135 @@ export const usePlaceUploads = (dispatch: Dispatch) => {
     errorFor: (placeId: string) => errors[placeId] ?? null,
   };
 };
+
+const readSharedCode = () => (location.hash.startsWith(SHARE_PREFIX) ? location.hash.slice(SHARE_PREFIX.length) : null);
+
+const isTouch = () => window.matchMedia("(hover: none)").matches;
+
+export const useTrips = (data: AppData, dispatch: Dispatch, nav: Nav, showToast: (t: UndoToastInput) => void) => {
+  const [shared, setShared] = useState<SharedTrip | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [shareMessage, setShareMessage] = useState<{ tripId: string; text: string } | null>(null);
+  const { openSharedTrip, focusStops, setTab } = nav;
+
+  useEffect(() => {
+    const load = () => {
+      const code = readSharedCode();
+      if (!code) return;
+      history.replaceState(null, "", location.pathname + location.search);
+      void decodeTrip(code).then((trip) => {
+        if (trip) {
+          setLinkError(null);
+          setShared(trip);
+          openSharedTrip();
+          focusStops(trip.stops);
+        } else {
+          setLinkError("Ten link do planu jest uszkodzony albo niepełny. Poproś o wysłanie go jeszcze raz.");
+          setTab("profile");
+        }
+      });
+    };
+    load();
+    window.addEventListener("hashchange", load);
+    return () => window.removeEventListener("hashchange", load);
+  }, [openSharedTrip, focusStops, setTab]);
+
+  const createTrip = () => {
+    const trip = newTrip();
+    dispatch({ type: "saveTrip", trip });
+    nav.openTrip(trip.id);
+  };
+
+  const removeTrip = (id: string) => {
+    const trip = data.trips[id];
+    if (!trip) return;
+    dispatch({ type: "removeTrip", id });
+    nav.goHome();
+    showToast({ message: `Usunięto plan: ${trip.name}`, onUndo: () => dispatch({ type: "saveTrip", trip }) });
+  };
+
+  const saveShared = () => {
+    if (!shared) return;
+    const trip: Trip = { ...shared, id: crypto.randomUUID(), createdAt: Date.now() };
+    dispatch({ type: "saveTrip", trip });
+    setShared(null);
+    nav.openTrip(trip.id);
+  };
+
+  const shareTrip = async (trip: Trip) => {
+    const url = await encodeTrip(trip);
+    const say = (text: string) => setShareMessage({ tripId: trip.id, text });
+    if (navigator.share && isTouch()) {
+      try {
+        await navigator.share({ title: trip.name, text: `Plan wyjazdu: ${trip.name}`, url });
+        return;
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      say("Link skopiowany. Wklej go w wiadomości do znajomych.");
+    } catch {
+      window.prompt("Skopiuj link do planu:", url);
+    }
+  };
+
+  return {
+    shared,
+    linkError,
+    shareMessageFor: (tripId: string) => (shareMessage?.tripId === tripId ? shareMessage.text : null),
+    createTrip,
+    removeTrip,
+    saveShared,
+    shareTrip,
+    dismissShared: () => {
+      setShared(null);
+      nav.goHome();
+    },
+  };
+};
+
+// Wish-list cities and UNESCO sites offered as one-click additions to a trip.
+export const useWishSuggestions = (data: AppData, unesco: UnescoIndex | null) =>
+  useMemo<WishSuggestion[]>(() => {
+    const places = Object.values(data.places)
+      .filter((p) => p.status === "wish")
+      .map((p) => ({ key: p.cityId ? `c-${p.cityId}` : `n-${p.name}`, label: p.name, toStop: (day: number) => stopFromPlace(p, day) }));
+    const byId = new Map(unesco?.list.map((s) => [s.id, s]));
+    const sites = Object.entries(data.collections[UNESCO] ?? {}).flatMap(([id, entry]) => {
+      const site = byId.get(id);
+      return entry.status === "wish" && site
+        ? [{ key: `s-${id}`, label: site.name, toStop: (day: number) => stopFromSite(site, day) }]
+        : [];
+    });
+    return [...places, ...sites];
+  }, [data.places, data.collections, unesco]);
+
+// Marked landmarks and UNESCO sites as list rows (only those whose data has loaded).
+export const useCollectedRows = (data: AppData, landmarks: Landmark[] | null, unesco: UnescoIndex | null) =>
+  useMemo(() => {
+    const landmarkById = new Map(landmarks?.map((l) => [l.id, l]));
+    const siteById = new Map(unesco?.list.map((s) => [s.id, s]));
+    const landmarkRows: CollectedRow[] = Object.entries(data.collections[LANDMARKS] ?? {}).flatMap(([id, entry]) => {
+      const l = landmarkById.get(id);
+      return l
+        ? [{ key: `l-${id}`, id, name: l.name, countryCodes: [l.countryCode], lat: l.lat, lng: l.lng, status: entry.status, category: l.category }]
+        : [];
+    });
+    const siteRows: CollectedRow[] = Object.entries(data.collections[UNESCO] ?? {}).flatMap(([id, entry]) => {
+      const s = siteById.get(id);
+      return s ? [{ key: `s-${id}`, id, name: s.name, countryCodes: s.countryCodes, lat: s.lat, lng: s.lng, status: entry.status }] : [];
+    });
+    return { landmarkRows, siteRows };
+  }, [data.collections, landmarks, unesco]);
+
+export const useAvatar = (currentId: string | undefined, dispatch: Dispatch) =>
+  useCallback(
+    async (file: File) => {
+      const avatarId = await savePhoto(file);
+      dispatch({ type: "updateProfile", patch: { avatarId } });
+      if (currentId) void deletePhoto(currentId);
+    },
+    [currentId, dispatch],
+  );

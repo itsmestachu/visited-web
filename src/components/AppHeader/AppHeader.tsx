@@ -1,4 +1,4 @@
-import { Bar, Counter, CounterItem, Logo, LogoDot, LogoKicker, LogoWord, Tab, Tabs } from "./AppHeader.styles";
+import { Bar, Counter, CounterItem, Logo, LogoKicker, LogoWord, Tab, Tabs } from "./AppHeader.styles";
 import type { AppHeaderProps } from "./AppHeader.types";
 
 export function AppHeader({ tab, onTab, visited, total, cities }: AppHeaderProps) {
@@ -7,8 +7,7 @@ export function AppHeader({ tab, onTab, visited, total, cities }: AppHeaderProps
       <Logo>
         <LogoKicker>Twoja własna</LogoKicker>
         <LogoWord>
-          mapa p<LogoDot />
-          dróży
+          mapa podróży
         </LogoWord>
       </Logo>
       <Tabs>
@@ -17,6 +16,9 @@ export function AppHeader({ tab, onTab, visited, total, cities }: AppHeaderProps
         </Tab>
         <Tab type="button" $active={tab === "stats"} onClick={() => onTab("stats")}>
           Statystyki
+        </Tab>
+        <Tab type="button" $active={tab === "profile"} onClick={() => onTab("profile")}>
+          Profil
         </Tab>
       </Tabs>
       <Counter>

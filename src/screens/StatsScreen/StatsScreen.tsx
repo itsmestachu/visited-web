@@ -1,19 +1,34 @@
+import { useCallback, useMemo, useState } from "react";
 import { useTheme } from "styled-components";
+import { Button } from "../../components/Button/Button";
+import { SharePoster } from "../../components/SharePoster/SharePoster";
 import { countryName } from "../../data/countries";
 import { ProgressBar } from "../../components/ProgressBar/ProgressBar";
 import { Muted, ScreenLayout, Section } from "../../components/ScreenLayout/ScreenLayout";
 import { useTravelStats } from "./StatsScreen.hooks";
 import { StatTile } from "./StatTile";
 import { BarRow } from "./BarRow";
+import { BackupSection } from "./BackupSection";
 import { Chip, Chips, Tiles } from "./StatsScreen.styles";
 import type { StatsScreenProps } from "./StatsScreen.types";
 
-export function StatsScreen({ data, onOpenCountry }: StatsScreenProps) {
+export function StatsScreen({ data, unescoTotal, landmarksTotal, backup, onOpenCountry }: StatsScreenProps) {
   const s = useTravelStats(data);
   const { colors } = useTheme();
+  const [sharing, setSharing] = useState(false);
+  const closeSharing = useCallback(() => setSharing(false), []);
+  const posterInput = useMemo(
+    () => ({ ...s, countries: data.countries, places: Object.values(data.places) }),
+    [s, data.countries, data.places],
+  );
 
   return (
     <ScreenLayout>
+      <Button variant="primary" onClick={() => setSharing(true)}>
+        Pochwal się mapą: grafika na Instagram i X
+      </Button>
+      {sharing && <SharePoster input={posterInput} onClose={closeSharing} />}
+
       <Tiles>
         <StatTile big value={s.visited} label={`krajów z ${s.total} · ${s.percent}% świata`}>
           <ProgressBar value={s.percent} color={colors.ink} />
@@ -27,6 +42,25 @@ export function StatsScreen({ data, onOpenCountry }: StatsScreenProps) {
         {s.continents.map((c) => (
           <BarRow key={c.code} label={c.name} value={c.done} max={c.total} caption={`${c.done}/${c.total}`} />
         ))}
+      </Section>
+
+      <Section title="Kolekcje">
+        <BarRow
+          label="Słynne miejsca"
+          value={s.landmarksVisited}
+          max={landmarksTotal || 1}
+          caption={[`${s.landmarksVisited}/${landmarksTotal || "…"}`, s.landmarksWish ? `${s.landmarksWish} ★` : ""].filter(Boolean).join(" · ")}
+        />
+        <BarRow
+          label="UNESCO"
+          value={s.unescoVisited}
+          max={unescoTotal || 1}
+          caption={[`${s.unescoVisited}/${unescoTotal || "…"}`, s.unescoWish ? `${s.unescoWish} ★` : ""].filter(Boolean).join(" · ")}
+        />
+        <Muted>
+          Lista światowego dziedzictwa: <a href="https://data.unesco.org/explore/dataset/whc001/">UNESCO World Heritage Centre</a>, CC BY-SA 4.0.
+          Słynne miejsca: <a href="https://www.wikidata.org/">Wikidata</a> (CC0), ikony <a href="https://github.com/mapbox/maki">Maki</a> (CC0).
+        </Muted>
       </Section>
 
       <Section title="Podróże w latach">
@@ -58,6 +92,8 @@ export function StatsScreen({ data, onOpenCountry }: StatsScreenProps) {
           </Chips>
         )}
       </Section>
+
+      <BackupSection {...backup} />
     </ScreenLayout>
   );
 }

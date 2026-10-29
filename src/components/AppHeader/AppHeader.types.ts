@@ -1,4 +1,4 @@
-export type AppTab = "map" | "stats";
+export type AppTab = "map" | "stats" | "profile";
 
 export type AppHeaderProps = {
   tab: AppTab;

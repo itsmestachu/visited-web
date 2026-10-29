@@ -3,13 +3,18 @@ import { select } from "d3-selection";
 import { zoom, zoomIdentity, zoomTransform, type ZoomBehavior } from "d3-zoom";
 import "d3-transition";
 import type { CityIndex } from "../../data/cities";
-import type { Place } from "../../store/store.types";
+import type { Landmark, UnescoSite } from "../../data/data.types";
+import type { Place, TripStop } from "../../store/store.types";
 import { anchorFor, createViewport, HEIGHT, MAX_ZOOM, projection, toScreen, WIDTH } from "./WorldMap.projection";
-import { applyPins, computeBaseLayout } from "./WorldMap.layout";
-import type { Focus, ProjectedCities, Size, ZoomState } from "./WorldMap.types";
+import { applyPins, computeBaseLayout, layoutRoute } from "./WorldMap.layout";
+import type { Focus, ProjectedCities, ProjectedLandmark, ProjectedSite, Size, ZoomState } from "./WorldMap.types";
 
 const IDENTITY: ZoomState = { x: 0, y: 0, k: 1 };
+const NO_LANDMARKS: Landmark[] = [];
+const NO_SITES: UnescoSite[] = [];
 const POINT_ZOOM = 12;
+// Labels ride along with the map transform during a gesture, so re-running the label layout every frame is wasted work.
+const LAYOUT_INTERVAL = 100;
 
 export const useElementSize = (ref: RefObject<HTMLElement | null>) => {
   const [size, setSize] = useState<Size>({ width: 0, height: 0 });
@@ -59,17 +64,22 @@ export const useMapZoom = (onFrame: (zoom: ZoomState) => void) => {
         latestRef.current = { x: event.transform.x, y: event.transform.y, k: event.transform.k };
         onFrameRef.current(latestRef.current);
         if (!frameRef.current) {
-          frameRef.current = requestAnimationFrame(() => {
+          frameRef.current = window.setTimeout(() => {
             frameRef.current = 0;
             setZoomState(latestRef.current);
-          });
+          }, LAYOUT_INTERVAL);
         }
+      })
+      .on("end", () => {
+        clearTimeout(frameRef.current);
+        frameRef.current = 0;
+        setZoomState(latestRef.current);
       });
     behaviorRef.current = behavior;
     select(svg).call(behavior).on("dblclick.zoom", null);
     return () => {
       select(svg).on(".zoom", null);
-      cancelAnimationFrame(frameRef.current);
+      clearTimeout(frameRef.current);
     };
   }, []);
 
@@ -117,6 +127,17 @@ export const useMapFocus = (
       if (!a) return;
       const [[x0, y0], [x1, y1]] = a.bounds;
       zoomTo((x0 + x1) / 2, (y0 + y1) / 2, 0.6 / Math.max((x1 - x0) / WIDTH, (y1 - y0) / HEIGHT));
+    } else if (focus.kind === "points") {
+      const projected = focus.points.flatMap((pt) => {
+        const p = projection(pt);
+        return p ? [p] : [];
+      });
+      if (projected.length === 0) return;
+      const xs = projected.map((p) => p[0]);
+      const ys = projected.map((p) => p[1]);
+      const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+      const fit = 0.6 / Math.max((x1 - x0) / WIDTH, (y1 - y0) / HEIGHT, 1e-6);
+      zoomTo((x0 + x1) / 2, (y0 + y1) / 2, Math.min(fit, POINT_ZOOM));
     } else {
       const p = projection([focus.lng, focus.lat]);
       if (p) zoomTo(p[0], p[1], Math.max(currentK(), POINT_ZOOM));
@@ -124,7 +145,17 @@ export const useMapFocus = (
   }, [focus, zoomTo, currentK]);
 };
 
-export const useLabelLayout = (zoomState: ZoomState, size: Size, cities: CityIndex | null, places: Place[]) => {
+export const useLabelLayout = (
+  zoomState: ZoomState,
+  size: Size,
+  cities: CityIndex | null,
+  places: Place[],
+  minCityPopulation: number,
+  route: TripStop[] | null,
+  landmarks: Landmark[] | null = null,
+  markedLandmarks: Landmark[] = NO_LANDMARKS,
+  markedSites: UnescoSite[] = NO_SITES,
+) => {
   const viewport = useMemo(() => createViewport(zoomState, size), [zoomState, size]);
 
   const projected = useMemo<ProjectedCities | null>(() => {
@@ -148,11 +179,42 @@ export const useLabelLayout = (zoomState: ZoomState, size: Size, cities: CityInd
     [places],
   );
 
-  const base = useMemo(() => computeBaseLayout(viewport, cities, projected), [viewport, cities, projected]);
+  const projectedLandmarks = useMemo<ProjectedLandmark[] | null>(
+    () =>
+      landmarks?.flatMap((landmark) => {
+        const p = projection([landmark.lng, landmark.lat]);
+        return p ? [{ landmark, ux: p[0], uy: p[1] }] : [];
+      }) ?? null,
+    [landmarks],
+  );
 
-  const layout = useMemo(() => applyPins(viewport, base, placePoints), [viewport, base, placePoints]);
+  const marked = useMemo(
+    () => ({
+      landmarks: markedLandmarks.flatMap((landmark): ProjectedLandmark[] => {
+        const p = projection([landmark.lng, landmark.lat]);
+        return p ? [{ landmark, ux: p[0], uy: p[1] }] : [];
+      }),
+      sites: markedSites.flatMap((site): ProjectedSite[] => {
+        const p = projection([site.lng, site.lat]);
+        return p ? [{ site, ux: p[0], uy: p[1] }] : [];
+      }),
+    }),
+    [markedLandmarks, markedSites],
+  );
 
-  return { viewport, ...layout };
+  const base = useMemo(
+    () => computeBaseLayout(viewport, cities, projected, minCityPopulation, projectedLandmarks),
+    [viewport, cities, projected, minCityPopulation, projectedLandmarks],
+  );
+
+  const routeLayout = useMemo(() => (route ? layoutRoute(viewport, route) : null), [viewport, route]);
+
+  const layout = useMemo(
+    () => applyPins(viewport, base, placePoints, routeLayout?.boxes, marked),
+    [viewport, base, placePoints, routeLayout, marked],
+  );
+
+  return { viewport, routeItems: routeLayout?.items ?? null, ...layout };
 };
 
 export const useLatestCallback = <A extends unknown[]>(fn: (...args: A) => void) => {

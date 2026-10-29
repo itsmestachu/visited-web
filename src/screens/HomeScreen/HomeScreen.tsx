@@ -2,10 +2,12 @@ import { countryName } from "../../data/countries";
 import { formatDate } from "../../utils/dates";
 import { SearchBar } from "../../components/SearchBar/SearchBar";
 import { List, ListRow } from "../../components/ListRow/ListRow";
-import { ColorDot, PinMarker } from "../../components/Marker/Marker";
+import { ColorDot, LandmarkMarker, PinMarker, SiteMarker } from "../../components/Marker/Marker";
+import { LANDMARK_LABEL } from "../../data/landmarks";
+import { comparePl } from "../../utils/text";
 import { Muted, ScreenLayout, Section } from "../../components/ScreenLayout/ScreenLayout";
 import { useHomeLists } from "./HomeScreen.hooks";
-import type { HomeScreenProps } from "./HomeScreen.types";
+import type { CollectedRow, HomeScreenProps } from "./HomeScreen.types";
 
 const EMPTY = {
   visited: {
@@ -29,8 +31,16 @@ export function HomeScreen({
   onOpenPlace,
   onRemoveCountry,
   onRemovePlace,
+  landmarkRows,
+  siteRows,
+  onOpenCollected,
+  onRemoveLandmark,
+  onRemoveSite,
 }: HomeScreenProps) {
   const { countryRows, placeRows } = useHomeLists(data, places, mode);
+  const inMode = (rows: CollectedRow[]) => rows.filter((r) => r.status === mode).sort((a, b) => comparePl(a.name, b.name));
+  const landmarks = inMode(landmarkRows);
+  const sites = inMode(siteRows);
 
   return (
     <ScreenLayout>
@@ -56,6 +66,42 @@ export function HomeScreen({
           </List>
         )}
       </Section>
+
+      {landmarks.length > 0 && (
+        <Section title="Atrakcje" count={landmarks.length}>
+          <List>
+            {landmarks.map((r) => (
+              <ListRow
+                key={r.key}
+                marker={r.category && <LandmarkMarker status={r.status} category={r.category} />}
+                title={r.name}
+                subtitle={[r.category ? LANDMARK_LABEL[r.category] : "", countryName(r.countryCodes[0])].filter(Boolean).join(" · ")}
+                onClick={() => onOpenCollected(r)}
+                onDelete={() => onRemoveLandmark(r)}
+                deleteLabel={`Odznacz ${r.name}`}
+              />
+            ))}
+          </List>
+        </Section>
+      )}
+
+      {sites.length > 0 && (
+        <Section title="UNESCO" count={sites.length}>
+          <List>
+            {sites.map((r) => (
+              <ListRow
+                key={r.key}
+                marker={<SiteMarker status={r.status} />}
+                title={r.name}
+                subtitle={r.countryCodes.map(countryName).join(", ")}
+                onClick={() => onOpenCollected(r)}
+                onDelete={() => onRemoveSite(r)}
+                deleteLabel={`Odznacz ${r.name}`}
+              />
+            ))}
+          </List>
+        </Section>
+      )}
 
       <Section title="Kraje" count={countryRows.length}>
         {countryRows.length === 0 ? (

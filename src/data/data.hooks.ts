@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react";
-import { loadCities, type CityIndex } from "./cities";
+import { loadCities } from "./cities";
+import { loadUnesco } from "./unesco";
+import { loadLandmarks } from "./landmarks";
 
-export const useCities = () => {
-  const [index, setIndex] = useState<CityIndex | null>(null);
+const useLoaded = <T,>(load: () => Promise<T>) => {
+  const [value, setValue] = useState<T | null>(null);
   useEffect(() => {
     let alive = true;
-    loadCities().then((i) => {
-      if (alive) setIndex(i);
+    load().then((v) => {
+      if (alive) setValue(v);
     });
     return () => {
       alive = false;
     };
-  }, []);
-  return index;
+  }, [load]);
+  return value;
 };
+
+export const useCities = () => useLoaded(loadCities);
+
+export const useUnesco = () => useLoaded(loadUnesco);
+
+export const useLandmarks = () => useLoaded(loadLandmarks);
