@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { Button } from "../../components/Button/Button";
 
 export const Toggles = styled.div`
   display: flex;
@@ -120,4 +121,9 @@ export const Credit = styled.p`
   margin: 0;
   font-size: 11px;
   color: ${({ theme }) => theme.colors.inkSoft};
+`;
+
+export const MoreButton = styled(Button)`
+  align-self: center;
+  margin-top: 10px;
 `;

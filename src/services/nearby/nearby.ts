@@ -42,7 +42,7 @@ const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.p
 const OVERPASS_TIMEOUT = 20_000;
 const WIKI_TIMEOUT = 10_000;
 const MAX_PER_CATEGORY = 40;
-const WIKI_SKIP_TYPES = new Set(["city", "country", "adm1st", "adm2nd", "adm3rd", "region", "isle"]);
+const WIKI_SKIP_TYPES = new Set(["city", "country", "adm1st", "adm2nd", "adm3rd", "region", "isle", "railwaystation", "airport"]);
 
 export class NearbyError extends Error {}
 
@@ -53,11 +53,11 @@ export const distanceM = (lat1: number, lng1: number, lat2: number, lng2: number
   return Math.round(12_742_000 * Math.asin(Math.sqrt(a)));
 };
 
-const cache = new Map<string, Promise<NearbyPlace[]>>();
+const cache = new Map<string, Promise<unknown>>();
 
-const cached = (key: string, load: () => Promise<NearbyPlace[]>) => {
+const cached = <T,>(key: string, load: () => Promise<T>): Promise<T> => {
   const hit = cache.get(key);
-  if (hit) return hit;
+  if (hit) return hit as Promise<T>;
   const promise = load().catch((e) => {
     cache.delete(key);
     throw e;
@@ -118,102 +118,102 @@ const fetchOsm = (category: NearbyCategory, lat: number, lng: number, radius: nu
       .slice(0, MAX_PER_CATEGORY);
   });
 
-type WikiPage = {
-  pageid: number;
-  title: string;
-  extract?: string;
-  thumbnail?: { source: string };
-  coordinates?: { lat: number; lon: number; type?: string }[];
+type WikiHit = { pageid: number; title: string; lat: number; lon: number; type?: string | null };
+
+type WikiPage = { pageid: number; extract?: string; thumbnail?: { source: string }; fullurl?: string };
+
+const WIKI_API = "https://pl.wikipedia.org/w/api.php";
+// Wikipedia returns intro extracts for at most 20 pages per request, so details load in pages of that size.
+export const WIKI_PAGE = 20;
+
+const wikiGet = async <T,>(params: Record<string, string>) => {
+  const res = await fetch(`${WIKI_API}?${new URLSearchParams({ ...params, format: "json", origin: "*" })}`, {
+    signal: AbortSignal.timeout(WIKI_TIMEOUT),
+  });
+  if (!res.ok) throw new NearbyError("Wikipedia nie odpowiada. Spróbuj za chwilę.");
+  return (await res.json()) as T;
 };
 
-const fetchWiki = (lat: number, lng: number, radius: number) =>
-  cached(`wiki:${lat.toFixed(4)},${lng.toFixed(4)}:${radius}`, async () => {
-    const params = new URLSearchParams({
+// Every geotagged article around the point, nearest first; regions, cities and stations are left out.
+const fetchWikiIndex = (lat: number, lng: number, radius: number) =>
+  cached(`wiki-index:${lat.toFixed(4)},${lng.toFixed(4)}:${radius}`, async () => {
+    const data = await wikiGet<{ query?: { geosearch: WikiHit[] } }>({
       action: "query",
-      generator: "geosearch",
-      ggscoord: `${lat}|${lng}`,
-      ggsradius: String(Math.min(radius, 10000)),
-      ggslimit: "20",
-      prop: "extracts|pageimages|coordinates|info",
+      list: "geosearch",
+      gscoord: `${lat}|${lng}`,
+      gsradius: String(Math.min(radius, 10000)),
+      gslimit: "500",
+      gsprop: "type",
+    });
+    return (data.query?.geosearch ?? []).filter((h) => h.type && !WIKI_SKIP_TYPES.has(h.type));
+  });
+
+const fetchWikiDetails = (hits: WikiHit[]) =>
+  cached(`wiki-details:${hits.map((h) => h.pageid).join(",")}`, async () => {
+    const data = await wikiGet<{ query?: { pages: Record<string, WikiPage> } }>({
+      action: "query",
+      pageids: hits.map((h) => h.pageid).join("|"),
+      prop: "extracts|pageimages|info",
       inprop: "url",
       exintro: "1",
       explaintext: "1",
       exsentences: "2",
-      exlimit: "max",
-      pilimit: "max",
-      colimit: "max",
-      coprop: "type",
+      exlimit: String(WIKI_PAGE),
+      pilimit: String(WIKI_PAGE),
       pithumbsize: "160",
-      format: "json",
-      origin: "*",
     });
-    const res = await fetch(`https://pl.wikipedia.org/w/api.php?${params}`, { signal: AbortSignal.timeout(WIKI_TIMEOUT) });
-    if (!res.ok) throw new NearbyError("Wikipedia nie odpowiada. Spróbuj za chwilę.");
-    const pages = Object.values(((await res.json()) as { query?: { pages: Record<string, WikiPage & { fullurl?: string }> } }).query?.pages ?? {});
-    return pages.flatMap((p): NearbyPlace[] => {
-      const c = p.coordinates?.[0];
-      if (!c?.type || WIKI_SKIP_TYPES.has(c.type)) return [];
-      return [
-        {
-          id: `wiki-${p.pageid}`,
-          name: p.title,
-          category: "see",
-          kind: "z Wikipedii",
-          lat: c.lat,
-          lng: c.lon,
-          distance: distanceM(lat, lng, c.lat, c.lon),
-          description: p.extract,
-          image: p.thumbnail?.source,
-          wikiUrl: p.fullurl,
-        },
-      ];
-    });
+    return data.query?.pages ?? {};
   });
 
-const sameName = (a: string, b: string) => a.localeCompare(b, "pl", { sensitivity: "base" }) === 0;
+const fetchSights = async (lat: number, lng: number, radius: number, count: number) => {
+  const index = await fetchWikiIndex(lat, lng, radius);
+  const shown = index.slice(0, count);
+  const chunks = Array.from({ length: Math.ceil(shown.length / WIKI_PAGE) }, (_, i) => shown.slice(i * WIKI_PAGE, (i + 1) * WIKI_PAGE));
+  const details = Object.assign({}, ...(await Promise.all(chunks.map(fetchWikiDetails)))) as Record<string, WikiPage>;
+  const places = shown.map(
+    (h): NearbyPlace => ({
+      id: `wiki-${h.pageid}`,
+      name: h.title,
+      category: "see",
+      kind: "z Wikipedii",
+      lat: h.lat,
+      lng: h.lon,
+      distance: distanceM(lat, lng, h.lat, h.lon),
+      description: details[h.pageid]?.extract,
+      image: details[h.pageid]?.thumbnail?.source,
+      wikiUrl: details[h.pageid]?.fullurl,
+    }),
+  );
+  return { places, hasMore: index.length > count };
+};
 
-export type NearbyResult = { places: NearbyPlace[]; error: string | null; loading: boolean };
+export type NearbyResult = { places: NearbyPlace[]; error: string | null; loading: boolean; hasMore: boolean };
 
 const messageOf = (e: unknown) => (e instanceof NearbyError ? e.message : "Nie udało się pobrać miejsc.");
 
-const merge = (wiki: NearbyPlace[], osm: NearbyPlace[]) =>
-  [...wiki, ...osm.filter((o) => !wiki.some((w) => sameName(w.name, o.name)))].sort((a, b) => a.distance - b.distance);
+// Sights come from Wikipedia only for now: the public OpenStreetMap servers proved too unreliable.
+// const sameName = (a: string, b: string) => a.localeCompare(b, "pl", { sensitivity: "base" }) === 0;
+// const merge = (wiki: NearbyPlace[], osm: NearbyPlace[]) =>
+//   [...wiki, ...osm.filter((o) => !wiki.some((w) => sameName(w.name, o.name)))].sort((a, b) => a.distance - b.distance);
 
-// Reports progress through onUpdate: sights show Wikipedia's fast answer first and add OpenStreetMap's when it arrives.
+// `count` is how many sights to show; it grows with "Pokaż więcej".
 export const fetchNearby = async (
   category: NearbyCategory,
   lat: number,
   lng: number,
   radius: number,
+  count: number,
   onUpdate: (result: NearbyResult) => void,
 ) => {
-  if (category !== "see") {
-    try {
-      onUpdate({ places: await fetchOsm(category, lat, lng, radius), error: null, loading: false });
-    } catch (e) {
-      onUpdate({ places: [], error: messageOf(e), loading: false });
+  try {
+    if (category === "see") {
+      onUpdate({ ...(await fetchSights(lat, lng, radius, count)), error: null, loading: false });
+    } else {
+      onUpdate({ places: await fetchOsm(category, lat, lng, radius), error: null, loading: false, hasMore: false });
     }
-    return;
+  } catch (e) {
+    onUpdate({ places: [], error: messageOf(e), loading: false, hasMore: false });
   }
-  let wiki: NearbyPlace[] = [];
-  let osm: NearbyPlace[] = [];
-  let failures = 0;
-  let lastError: unknown = null;
-  let pending = 2;
-  const settle = () => {
-    pending--;
-    const places = merge(wiki, osm);
-    onUpdate({ places, error: pending === 0 && failures === 2 ? messageOf(lastError) : null, loading: pending > 0 });
-  };
-  const track = (load: Promise<NearbyPlace[]>, store: (p: NearbyPlace[]) => void) =>
-    load.then(store, (e) => {
-      failures++;
-      lastError = e;
-    }).then(settle);
-  await Promise.all([
-    track(fetchWiki(lat, lng, radius), (p) => (wiki = p)),
-    track(fetchOsm("see", lat, lng, radius), (p) => (osm = p)),
-  ]);
 };
 
 export const formatDistance = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} km`);
