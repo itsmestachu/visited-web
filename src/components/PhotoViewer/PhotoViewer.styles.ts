@@ -58,10 +58,10 @@ export const Count = styled.span`
   margin-right: 4px;
 `;
 
-export const TopButton = styled.button<{ $danger?: boolean }>`
-  border: 1.5px solid rgba(253, 248, 236, 0.3);
-  background: transparent;
-  color: inherit;
+export const TopButton = styled.button<{ $danger?: boolean; $active?: boolean }>`
+  border: 1.5px solid ${({ $active, theme }) => ($active ? theme.colors.mustard : "rgba(253, 248, 236, 0.3)")};
+  background: ${({ $active }) => ($active ? "rgba(241, 194, 63, 0.18)" : "transparent")};
+  color: ${({ $active, theme }) => ($active ? theme.colors.mustard : "inherit")};
   border-radius: ${({ theme }) => theme.radius.sm};
   padding: 7px 12px;
   font-size: 13px;

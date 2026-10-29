@@ -2,9 +2,9 @@ import { createPortal } from "react-dom";
 import { usePhotoUrl } from "../../services/photoStorage/photoStorage.hooks";
 import { SLIDE_DURATION, useSlideshow } from "./PhotoViewer.hooks";
 import { Actions, Count, Image, Nav, Overlay, Progress, Stage, Subtitle, Title, Top, TopButton } from "./PhotoViewer.styles";
-import type { PhotoViewerProps } from "./PhotoViewer.types";
+import { SKETCH_COVER, type PhotoViewerProps } from "./PhotoViewer.types";
 
-export function PhotoViewer({ title, subtitle, photoIds, startIndex, autoplay, onClose, onDelete }: PhotoViewerProps) {
+export function PhotoViewer({ title, subtitle, photoIds, startIndex, autoplay, onClose, onDelete, cover }: PhotoViewerProps) {
   const count = photoIds.length;
   const { index, playing, next, prev, togglePlay } = useSlideshow(count, startIndex, autoplay, onClose);
   const current = photoIds[index];
@@ -24,6 +24,21 @@ export function PhotoViewer({ title, subtitle, photoIds, startIndex, autoplay, o
             {index + 1} / {count}
           </Count>
           {count > 1 && <TopButton onClick={togglePlay}>{playing ? "❚❚ Pauza" : "▶ Pokaz"}</TopButton>}
+          {cover && (
+            <>
+              <TopButton $active={cover.value === current} aria-pressed={cover.value === current} onClick={() => cover.onChange(current)}>
+                {cover.value === current ? "✓ Miniaturka" : "Ustaw jako miniaturkę"}
+              </TopButton>
+              <TopButton
+                $active={cover.value === SKETCH_COVER}
+                aria-pressed={cover.value === SKETCH_COVER}
+                onClick={() => cover.onChange(SKETCH_COVER)}
+                title="Na karcie zamiast zdjęcia pokaż rysowaną mapkę"
+              >
+                {cover.value === SKETCH_COVER ? "✓ Rysunek" : "Użyj rysunku"}
+              </TopButton>
+            </>
+          )}
           {onDelete && (
             <TopButton $danger onClick={() => onDelete(current)}>
               Usuń zdjęcie

@@ -48,29 +48,6 @@ export const Card = styled.div`
   }
 `;
 
-export const Avatar = styled.div`
-  flex: none;
-  width: 112px;
-  height: 112px;
-  padding: 5px;
-  border: 2px dashed ${({ theme }) => theme.colors.red};
-  border-radius: 50%;
-
-  img,
-  span {
-    display: grid;
-    place-items: center;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-    background: ${({ theme }) => theme.colors.mustard};
-    font-family: ${({ theme }) => theme.fonts.serif};
-    font-size: 46px;
-    color: ${({ theme }) => theme.colors.ink};
-  }
-`;
-
 export const Who = styled.div`
   flex: 1;
   min-width: 0;
@@ -103,61 +80,101 @@ export const Bio = styled.p`
   color: ${({ theme }) => theme.colors.inkSoft};
 `;
 
-export const Stamps = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px 16px;
-  max-width: 820px;
-  margin: 0 auto 34px;
-`;
-
-export const StampFigure = styled.div<{ $tilt: number }>`
+export const StampFigure = styled.div`
   position: relative;
-  width: 112px;
-  height: 112px;
-  transform: rotate(${({ $tilt }) => $tilt}deg);
-  filter: drop-shadow(2px 4px 2px rgba(36, 22, 14, 0.4));
+  flex: none;
+  width: 136px;
+  height: 136px;
+  margin-right: 6px;
+  transform: rotate(3deg);
 
-  svg {
+  & > svg:first-child {
     display: block;
     width: 100%;
     height: 100%;
+    filter: drop-shadow(2px 4px 2px rgba(36, 22, 14, 0.35));
   }
 
   .paper {
     fill: #fffdf6;
   }
 
+  .window {
+    fill: ${({ theme }) => theme.colors.mustard};
+  }
+
+  .initial {
+    font-family: ${({ theme }) => theme.fonts.serif};
+    font-size: 70px;
+    fill: ${({ theme }) => theme.colors.ink};
+  }
+
   .ink {
     fill: ${({ theme }) => theme.colors.ink};
   }
+
+  ${mobile} {
+    order: -1;
+  }
 `;
 
-// Sits inside the stamp's window (15%-85% of the icon).
-export const StampText = styled.div`
+// Round cancellation mark overlapping the stamp's lower-left corner.
+export const Postmark = styled.svg`
   position: absolute;
-  inset: 17%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: ${({ theme }) => theme.colors.ink};
+  left: -72px;
+  bottom: -10px;
+  width: 120px;
+  height: 80px;
+  transform: rotate(-14deg);
+  opacity: 0.72;
+  overflow: visible;
+  pointer-events: none;
 
-  strong {
-    font-size: 30px;
-    font-weight: 800;
-    line-height: 1;
+  circle,
+  .waves {
+    fill: none;
+    stroke: ${({ theme }) => theme.colors.wish};
+    stroke-width: 1.6px;
   }
 
-  small {
-    margin-top: 3px;
-    font-size: 9.5px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    line-height: 1.15;
-    text-transform: uppercase;
+  text {
+    font-family: ${({ theme }) => theme.fonts.body};
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    fill: ${({ theme }) => theme.colors.wish};
+  }
+`;
+
+export const Marks = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin-top: 12px;
+
+  ${mobile} {
+    justify-content: center;
+  }
+`;
+
+// Passport-style rubber stamp for one statistic.
+export const Mark = styled.span<{ $tone: string; $tilt: number }>`
+  padding: 3px 8px;
+  border: 2px solid ${({ $tone }) => $tone};
+  outline: 1px solid ${({ $tone }) => $tone};
+  outline-offset: 2px;
+  border-radius: 4px;
+  color: ${({ $tone }) => $tone};
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: rotate(${({ $tilt }) => $tilt}deg);
+  opacity: 0.85;
+
+  strong {
+    font-size: 14px;
+    margin-right: 4px;
   }
 `;
 

@@ -201,6 +201,11 @@ export default function App() {
                   nav.focusStops(data.trips[id]?.stops ?? []);
                 }}
                 onOpenPlace={openPlaceAndFocus}
+                onCover={(memory, cover) =>
+                  memory.open.kind === "trip"
+                    ? dispatch({ type: "updateTrip", id: memory.open.id, patch: { cover } })
+                    : dispatch({ type: "updatePlace", id: memory.open.id, patch: { cover } })
+                }
               />
             ) : (
               <>

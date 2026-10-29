@@ -3,6 +3,7 @@ import { countryName } from "../../data/countries";
 import type { AppData, Place, Trip, TripStop } from "../../store/store.types";
 import { tripDates } from "../../services/trips/trips";
 import { formatDate } from "../../utils/dates";
+import { SKETCH_COVER } from "../PhotoViewer/PhotoViewer.types";
 
 export type Memory = {
   id: string;
@@ -10,6 +11,7 @@ export type Memory = {
   subtitle: string;
   planned: boolean;
   photoIds: string[];
+  cover?: string;
   stops: TripStop[];
   sortKey: string;
   open: { kind: "trip"; id: string } | { kind: "place"; id: string };
@@ -38,6 +40,7 @@ export const useMemories = (data: AppData) =>
         subtitle: [tripDates(trip), countries].filter(Boolean).join(" · "),
         planned: trip.status === "planned",
         photoIds: trip.status === "done" ? own.flatMap((p) => p.photos) : [],
+        cover: trip.cover,
         stops: trip.stops,
         sortKey: trip.startDate ?? new Date(trip.createdAt).toISOString().slice(0, 10),
         open: { kind: "trip", id: trip.id },
@@ -52,6 +55,7 @@ export const useMemories = (data: AppData) =>
         subtitle: [formatDate(p.date), countryName(p.countryCode)].filter(Boolean).join(" · "),
         planned: false,
         photoIds: p.photos,
+        cover: p.cover,
         stops: [placeStop(p)],
         sortKey: p.date ?? new Date(p.createdAt).toISOString().slice(0, 10),
         open: { kind: "place", id: p.id },
@@ -64,6 +68,12 @@ export const useMemories = (data: AppData) =>
       places: placeMemories.sort(byDateDesc),
     };
   }, [data.places, data.trips]);
+
+// The photo shown on the card: the chosen one while it still exists, else the first; null means the drawn sketch.
+export const coverPhoto = (m: Pick<Memory, "photoIds" | "cover">) => {
+  if (m.cover === SKETCH_COVER) return null;
+  return m.cover && m.photoIds.includes(m.cover) ? m.cover : (m.photoIds[0] ?? null);
+};
 
 // Stable pseudo-random tilt per card, so the wall looks hand-pinned but doesn't reshuffle on every render.
 export const tiltFor = (id: string) => {

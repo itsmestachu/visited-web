@@ -18,6 +18,7 @@ export type Place = {
   date?: string;
   note?: string;
   photos: string[];
+  cover?: string;
   createdAt: number;
 };
 
@@ -47,6 +48,7 @@ export type Trip = {
   stops: TripStop[];
   checklist: ChecklistItem[];
   note?: string;
+  cover?: string;
   createdAt: number;
 };
 

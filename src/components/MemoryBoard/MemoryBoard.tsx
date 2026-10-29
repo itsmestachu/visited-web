@@ -1,12 +1,13 @@
 import { useState } from "react";
+import { useTheme } from "styled-components";
 import type { AppData } from "../../store/store.types";
 import { usePhotoUrl } from "../../services/photoStorage/photoStorage.hooks";
 import { useTravelStats } from "../../screens/StatsScreen/StatsScreen.hooks";
 import { plural } from "../../utils/text";
 import { PhotoViewer } from "../PhotoViewer/PhotoViewer";
-import { tiltFor, useMemories, type Memory } from "./MemoryBoard.hooks";
+import { SKETCH_COVER } from "../PhotoViewer/PhotoViewer.types";
+import { coverPhoto, tiltFor, useMemories, type Memory } from "./MemoryBoard.hooks";
 import {
-  Avatar,
   Bio,
   Caption,
   Card,
@@ -14,13 +15,14 @@ import {
   Empty,
   Grid,
   Kicker,
+  Mark,
+  Marks,
   Name,
   Picture,
   PlannedStamp,
   Polaroid,
   Section,
   SectionLabel,
-  Stamps,
   Sub,
   Tape,
   Wall,
@@ -34,34 +36,33 @@ type Props = {
   unescoTotal: number;
   onOpenTrip: (id: string) => void;
   onOpenPlace: (id: string) => void;
+  onCover: (memory: Memory, cover: string) => void;
 };
 
-const STAMP_TONES = ["#f1c23f", "#e8b4a0", "#b9cdb5", "#e9dcbd", "#a9c1d6", "#f1e3bf"];
+const YEAR = new Date().getFullYear();
 
 function Cover({ memory }: { memory: Memory }) {
-  const url = usePhotoUrl(memory.photoIds[0] ?? "", "thumb");
-  if (memory.photoIds.length === 0) return <TripSketch stops={memory.stops} />;
+  const photo = coverPhoto(memory);
+  const url = usePhotoUrl(photo ?? "", "thumb");
+  if (!photo) return <TripSketch stops={memory.stops} />;
   return url ? <img src={url} alt="" loading="lazy" /> : null;
 }
 
-function ProfileAvatar({ avatarId, name }: { avatarId?: string; name: string }) {
-  const url = usePhotoUrl(avatarId ?? "", "thumb");
-  return <Avatar>{avatarId && url ? <img src={url} alt="" /> : <span aria-hidden="true">{name.trim()[0]?.toUpperCase() ?? "?"}</span>}</Avatar>;
-}
-
-export function MemoryBoard({ data, unescoTotal, onOpenTrip, onOpenPlace }: Props) {
+export function MemoryBoard({ data, unescoTotal, onOpenTrip, onOpenPlace, onCover }: Props) {
   const memories = useMemories(data);
   const s = useTravelStats(data);
-  const [viewing, setViewing] = useState<Memory | null>(null);
+  const { colors } = useTheme();
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const avatarUrl = usePhotoUrl(data.profile.avatarId ?? "", "thumb");
   const name = data.profile.name?.trim() || "Podróżnik";
 
-  const stamps = [
-    { value: `${s.visited}`, label: `${plural(s.visited, "kraj", "kraje", "krajów")} z ${s.total}` },
-    { value: `${s.continentsVisited}`, label: plural(s.continentsVisited, "kontynent", "kontynenty", "kontynentów") },
-    { value: `${s.cities}`, label: plural(s.cities, "miasto", "miasta", "miast") },
-    { value: `${s.unescoVisited}`, label: `UNESCO z ${unescoTotal || "…"}` },
-    { value: `${memories.trips.length}`, label: plural(memories.trips.length, "wyjazd", "wyjazdy", "wyjazdów") },
-    { value: `${s.photos}`, label: plural(s.photos, "zdjęcie", "zdjęcia", "zdjęć") },
+  const marks = [
+    { value: s.visited, label: plural(s.visited, "kraj", "kraje", "krajów") },
+    { value: s.continentsVisited, label: plural(s.continentsVisited, "kontynent", "kontynenty", "kontynentów") },
+    { value: s.cities, label: plural(s.cities, "miasto", "miasta", "miast") },
+    { value: s.unescoVisited, label: `UNESCO${unescoTotal ? ` / ${unescoTotal}` : ""}` },
+    { value: memories.trips.length, label: plural(memories.trips.length, "wyjazd", "wyjazdy", "wyjazdów") },
+    { value: s.photos, label: plural(s.photos, "zdjęcie", "zdjęcia", "zdjęć") },
   ];
 
   const sections = [
@@ -70,8 +71,11 @@ export function MemoryBoard({ data, unescoTotal, onOpenTrip, onOpenPlace }: Prop
     { title: "Odwiedzone miejsca", items: memories.places },
   ].filter((section) => section.items.length > 0);
 
+  // Looked up on every render so the viewer reflects a cover change straight away.
+  const viewing = sections.flatMap((section) => section.items).find((m) => m.id === viewingId);
+
   const open = (m: Memory) => {
-    if (m.photoIds.length > 0) setViewing(m);
+    if (m.photoIds.length > 0) setViewingId(m.id);
     else if (m.open.kind === "trip") onOpenTrip(m.open.id);
     else onOpenPlace(m.open.id);
   };
@@ -79,19 +83,21 @@ export function MemoryBoard({ data, unescoTotal, onOpenTrip, onOpenPlace }: Prop
   return (
     <Wall>
       <Card>
-        <ProfileAvatar avatarId={data.profile.avatarId} name={name} />
         <Who>
           <Kicker>Tablica podróży</Kicker>
           <Name>{name}</Name>
           {data.profile.bio && <Bio>{data.profile.bio}</Bio>}
+          <Marks>
+            {marks.map((m, i) => (
+              <Mark key={m.label} $tone={i % 2 ? colors.wish : colors.red} $tilt={tiltFor(m.label) / 2}>
+                <strong>{m.value}</strong>
+                {m.label}
+              </Mark>
+            ))}
+          </Marks>
         </Who>
+        <PostageStamp imageUrl={data.profile.avatarId ? avatarUrl : null} initial={name[0].toUpperCase()} year={YEAR} />
       </Card>
-
-      <Stamps>
-        {stamps.map((st, i) => (
-          <PostageStamp key={st.label} value={st.value} label={st.label} tone={STAMP_TONES[i % STAMP_TONES.length]} tilt={tiltFor(st.label) / 2} />
-        ))}
-      </Stamps>
 
       {sections.length === 0 && (
         <Empty>Tu zawisną Twoje wyjazdy i odwiedzone miejsca. Zaznacz miasta na mapie albo zaplanuj wyjazd w planerze.</Empty>
@@ -135,7 +141,8 @@ export function MemoryBoard({ data, unescoTotal, onOpenTrip, onOpenPlace }: Prop
           photoIds={viewing.photoIds}
           startIndex={0}
           autoplay={false}
-          onClose={() => setViewing(null)}
+          onClose={() => setViewingId(null)}
+          cover={{ value: coverPhoto(viewing) ?? SKETCH_COVER, onChange: (value) => onCover(viewing, value) }}
         />
       )}
     </Wall>
